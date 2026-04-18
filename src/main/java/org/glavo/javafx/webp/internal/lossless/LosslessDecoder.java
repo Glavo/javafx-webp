@@ -330,9 +330,9 @@ public final class LosslessDecoder {
 
                         for (int i = 0; i < count; i++) {
                             System.arraycopy(value, 0, data, (index + i) * 4, 4);
-                            if (huffmanInfo.colorCache != null) {
-                                huffmanInfo.colorCache.insert(value);
-                            }
+                        }
+                        if (huffmanInfo.colorCache != null) {
+                            huffmanInfo.colorCache.insert(value);
                         }
                         index += count;
                         continue;
@@ -371,18 +371,30 @@ public final class LosslessDecoder {
                     throw new WebPException("Corrupt VP8L bitstream");
                 }
 
-                for (int i = 0; i < length * 4; i++) {
-                    data[index * 4 + i] = data[index * 4 + i - dist * 4];
-                }
-                if (huffmanInfo.colorCache != null) {
+                if (dist == 1) {
+                    byte[] value = {
+                            data[(index - 1) * 4],
+                            data[(index - 1) * 4 + 1],
+                            data[(index - 1) * 4 + 2],
+                            data[(index - 1) * 4 + 3]
+                    };
                     for (int i = 0; i < length; i++) {
-                        byte[] pixel = {
-                                data[(index + i) * 4],
-                                data[(index + i) * 4 + 1],
-                                data[(index + i) * 4 + 2],
-                                data[(index + i) * 4 + 3]
-                        };
-                        huffmanInfo.colorCache.insert(pixel);
+                        System.arraycopy(value, 0, data, (index + i) * 4, 4);
+                    }
+                } else {
+                    for (int i = 0; i < length * 4; i++) {
+                        data[index * 4 + i] = data[index * 4 + i - dist * 4];
+                    }
+                    if (huffmanInfo.colorCache != null) {
+                        for (int i = 0; i < length; i++) {
+                            byte[] pixel = {
+                                    data[(index + i) * 4],
+                                    data[(index + i) * 4 + 1],
+                                    data[(index + i) * 4 + 2],
+                                    data[(index + i) * 4 + 3]
+                            };
+                            huffmanInfo.colorCache.insert(pixel);
+                        }
                     }
                 }
                 index += length;
@@ -477,7 +489,7 @@ public final class LosslessDecoder {
                     | ((color[1] & 0xFF) << 8)
                     | (color[2] & 0xFF)
                     | ((color[3] & 0xFF) << 24);
-            int index = (int) ((0x1e35a7bdL * Integer.toUnsignedLong(colorU32)) >>> (32 - colorCacheBits));
+            int index = (0x1e35a7bd * colorU32) >>> (32 - colorCacheBits);
             System.arraycopy(color, 0, colorCache[index], 0, 4);
         }
 
