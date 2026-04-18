@@ -7,6 +7,8 @@ images without using `java.desktop` or any external WebP codec at runtime. Decod
 available as tightly packed non-premultiplied `RGBA` buffers and can be converted directly to
 JavaFX `WritableImage` instances.
 
+This project was ported with Codex assistance from [image-rs/image-webp](https://github.com/image-rs/image-webp).
+
 ## Features
 
 - Pure Java decoder for WebP container parsing, VP8L lossless decoding, VP8 lossy decoding, alpha, and animation composition
