@@ -11,7 +11,11 @@ plugins {
 }
 
 group = "org.glavo"
-version = "0.1.0" + "-SNAPSHOT"
+
+if (version == Project.DEFAULT_VERSION) {
+    version = "0.1.0" + "-SNAPSHOT"
+}
+
 description = "WebP decoding library for JavaFX"
 
 repositories {
@@ -185,7 +189,7 @@ publishing.publications.create<MavenPublication>("maven") {
     }
 }
 
-if (rootProject.ext.has("signing.key")) {
+if (System.getenv("JITPACK").isNullOrBlank() && rootProject.ext.has("signing.key")) {
     signing {
         useInMemoryPgpKeys(
             rootProject.ext["signing.keyId"].toString(),
