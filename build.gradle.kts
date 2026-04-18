@@ -1,3 +1,5 @@
+import de.undercouch.gradle.tasks.download.Download
+
 plugins {
     id("java-library")
     id("jacoco")
@@ -5,6 +7,7 @@ plugins {
     id("signing")
     id("io.github.gradle-nexus.publish-plugin") version "2.0.0"
     id("org.glavo.load-maven-publish-properties") version "0.1.0"
+    id("de.undercouch.download") version "5.7.0"
 }
 
 group = "org.glavo"
@@ -100,6 +103,33 @@ tasks.register<JavaExec>("run") {
     dependsOn(tasks.classes)
     classpath = mainSourceSet.get().runtimeClasspath
     mainClass.set(mainClassName)
+}
+
+// Test
+
+val webpTestDataCommit = "53f4c95f055bf3509ceacce7e88894b78287a2f2"
+val webpTestDataZip = layout.buildDirectory.file("downloads/libwebp-test-data-${webpTestDataCommit}.zip")
+
+val downloadWebpTestData by tasks.registering(Download::class) {
+    src("https://github.com/webmproject/libwebp-test-data/archive/${webpTestDataCommit}.zip")
+    dest(webpTestDataZip)
+    overwrite(false)
+}
+
+tasks.processTestResources {
+    dependsOn(downloadWebpTestData)
+
+    into("libwebp-test-data") {
+        from(zipTree(webpTestDataZip)) {
+            eachFile {
+                relativePath = RelativePath(
+                    true,
+                    *relativePath.segments.drop(1).toTypedArray()
+                )
+            }
+            includeEmptyDirs = false
+        }
+    }
 }
 
 tasks.test {
