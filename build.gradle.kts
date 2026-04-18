@@ -22,7 +22,7 @@ val osName = System.getProperty("os.name").lowercase()
 val osArch = System.getProperty("os.arch").lowercase()
 
 dependencies {
-    val javafxVersion = "25.0.2"
+    val javafxVersion = "21.0.10"
     val javafxOS = when {
         osName.contains("win") -> "win"
         osName.contains("mac") -> "mac"
