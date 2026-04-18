@@ -18,10 +18,18 @@ repositories {
     mavenCentral()
 }
 
+fun DependencyHandlerScope.allConfigs(notation: Any) {
+    compileOnly(notation)
+    testCompileOnly(notation)
+    runtimeOnly(notation)
+    testRuntimeOnly(notation)
+}
+
 dependencies {
-    api("org.openjfx:javafx-base:$javafxVersion:$javafxPlatform")
-    api("org.openjfx:javafx-controls:$javafxVersion:$javafxPlatform")
-    api("org.openjfx:javafx-graphics:$javafxVersion:$javafxPlatform")
+    allConfigs("org.openjfx:javafx-base:$javafxVersion:$javafxPlatform")
+    allConfigs("org.openjfx:javafx-controls:$javafxVersion:$javafxPlatform")
+    allConfigs("org.openjfx:javafx-graphics:$javafxVersion:$javafxPlatform")
+
     implementation("com.twelvemonkeys.imageio:imageio-webp:3.13.1")
 
     testImplementation(platform("org.junit:junit-bom:6.0.0"))
