@@ -42,7 +42,7 @@ java {
 
 val mainSourceSet = sourceSets.named("main")
 
-tasks.withType<JavaCompile>().configureEach {
+tasks.withType<JavaCompile> {
     options.encoding = "UTF-8"
     options.release.set(17)
 }
