@@ -1,5 +1,7 @@
 # JavaFX WebP
 
+[![codecov](https://codecov.io/gh/Glavo/javafx-webp/graph/badge.svg?token=CPZ7P35UK3)](https://codecov.io/gh/Glavo/javafx-webp)
+
 Pure Java WebP decoding library for JavaFX.
 
 The project can decode static and animated WebP
