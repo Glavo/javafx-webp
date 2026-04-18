@@ -11,29 +11,41 @@ group = "org.glavo"
 version = "0.1.0" + "-SNAPSHOT"
 description = "WebP decoding library for JavaFX"
 
-val osName = System.getProperty("os.name").lowercase()
-val javafxPlatform = when {
-    osName.contains("win") -> "win"
-    osName.contains("mac") -> "mac"
-    else -> "linux"
-}
-val javafxVersion = "25.0.2"
-
 repositories {
     mavenCentral()
 }
 
-fun DependencyHandlerScope.allConfigs(notation: Any) {
-    compileOnly(notation)
-    testCompileOnly(notation)
-    runtimeOnly(notation)
-    testRuntimeOnly(notation)
-}
+val osName = System.getProperty("os.name").lowercase()
+val osArch = System.getProperty("os.arch").lowercase()
 
 dependencies {
-    allConfigs("org.openjfx:javafx-base:$javafxVersion:$javafxPlatform")
-    allConfigs("org.openjfx:javafx-controls:$javafxVersion:$javafxPlatform")
-    allConfigs("org.openjfx:javafx-graphics:$javafxVersion:$javafxPlatform")
+    val javafxVersion = "25.0.2"
+    val javafxOS = when {
+        osName.contains("win") -> "win"
+        osName.contains("mac") -> "mac"
+        osName.contains("linux") -> "linux"
+        else -> null
+    }
+    val javafxArch = when (osArch) {
+        "amd64", "x86-64", "x64" -> ""
+        "aarch64", "arm64" -> "-aarch64"
+        else -> null
+    }
+
+    fun javafx(module: String) {
+        if (javafxOS != null && javafxArch != null) {
+            val notation = "org.openjfx:javafx-$module:$javafxVersion:${javafxOS}${javafxArch}"
+
+            compileOnly(notation)
+            testCompileOnly(notation)
+            runtimeOnly(notation)
+            testRuntimeOnly(notation)
+        }
+    }
+
+    javafx("base")
+    javafx("controls")
+    javafx("graphics")
 
     testImplementation(platform("org.junit:junit-bom:6.0.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
