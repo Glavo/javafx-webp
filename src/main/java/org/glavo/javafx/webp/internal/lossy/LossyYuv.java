@@ -83,7 +83,7 @@ final class LossyYuv {
             int chromaWidth,
             int bytesPerPixel
     ) {
-        setPixel(rowBuffer, rowBufferOffset, yRow[yOffset], getFancyChromaValue(uRow1[uOffset1], uRow1[uOffset1], uRow2[uOffset2], uRow2[uOffset2]), getFancyChromaValue(vRow1[vOffset1], vRow1[vOffset1], vRow2[vOffset2], vRow2[vOffset2]), bytesPerPixel);
+        setPixel(rowBuffer, rowBufferOffset, yRow[yOffset] & 0xFF, getFancyChromaValue(uRow1[uOffset1], uRow1[uOffset1], uRow2[uOffset2], uRow2[uOffset2]), getFancyChromaValue(vRow1[vOffset1], vRow1[vOffset1], vRow2[vOffset2], vRow2[vOffset2]), bytesPerPixel);
 
         int dst = rowBufferOffset + bytesPerPixel;
         int yIndex = yOffset + 1;
@@ -97,11 +97,11 @@ final class LossyYuv {
             int v3 = vRow2[vOffset2 + chroma] & 0xFF;
             int v4 = vRow2[vOffset2 + chroma + 1] & 0xFF;
 
-            setPixel(rowBuffer, dst, yRow[yIndex], getFancyChromaValue(u1, u2, u3, u4), getFancyChromaValue(v1, v2, v3, v4), bytesPerPixel);
+            setPixel(rowBuffer, dst, yRow[yIndex] & 0xFF, getFancyChromaValue(u1, u2, u3, u4), getFancyChromaValue(v1, v2, v3, v4), bytesPerPixel);
             dst += bytesPerPixel;
             yIndex++;
             if (yIndex < yOffset + width) {
-                setPixel(rowBuffer, dst, yRow[yIndex], getFancyChromaValue(u2, u1, u4, u3), getFancyChromaValue(v2, v1, v4, v3), bytesPerPixel);
+                setPixel(rowBuffer, dst, yRow[yIndex] & 0xFF, getFancyChromaValue(u2, u1, u4, u3), getFancyChromaValue(v2, v1, v4, v3), bytesPerPixel);
                 dst += bytesPerPixel;
                 yIndex++;
             }
@@ -112,12 +112,12 @@ final class LossyYuv {
             int finalU2 = uRow2[uOffset2 + chromaWidth - 1] & 0xFF;
             int finalV1 = vRow1[vOffset1 + chromaWidth - 1] & 0xFF;
             int finalV2 = vRow2[vOffset2 + chromaWidth - 1] & 0xFF;
-            setPixel(rowBuffer, dst, yRow[yIndex], getFancyChromaValue(finalU1, finalU1, finalU2, finalU2), getFancyChromaValue(finalV1, finalV1, finalV2, finalV2), bytesPerPixel);
+            setPixel(rowBuffer, dst, yRow[yIndex] & 0xFF, getFancyChromaValue(finalU1, finalU1, finalU2, finalU2), getFancyChromaValue(finalV1, finalV1, finalV2, finalV2), bytesPerPixel);
         }
     }
 
     private static void fillRowFancyWithOneUvRow(byte[] rowBuffer, int rowBufferOffset, byte[] yRow, int yOffset, byte[] uRow, int uOffset, byte[] vRow, int vOffset, int width, int bytesPerPixel) {
-        setPixel(rowBuffer, rowBufferOffset, yRow[yOffset], uRow[uOffset] & 0xFF, vRow[vOffset] & 0xFF, bytesPerPixel);
+        setPixel(rowBuffer, rowBufferOffset, yRow[yOffset] & 0xFF, uRow[uOffset] & 0xFF, vRow[vOffset] & 0xFF, bytesPerPixel);
 
         int dst = rowBufferOffset + bytesPerPixel;
         int yIndex = yOffset + 1;
@@ -128,18 +128,18 @@ final class LossyYuv {
             int v1 = vRow[vOffset + chroma] & 0xFF;
             int v2 = vRow[vOffset + chroma + 1] & 0xFF;
 
-            setPixel(rowBuffer, dst, yRow[yIndex], getFancyChromaValue(u1, u2, u1, u2), getFancyChromaValue(v1, v2, v1, v2), bytesPerPixel);
+            setPixel(rowBuffer, dst, yRow[yIndex] & 0xFF, getFancyChromaValue(u1, u2, u1, u2), getFancyChromaValue(v1, v2, v1, v2), bytesPerPixel);
             dst += bytesPerPixel;
             yIndex++;
             if (yIndex < yOffset + width) {
-                setPixel(rowBuffer, dst, yRow[yIndex], getFancyChromaValue(u2, u1, u2, u1), getFancyChromaValue(v2, v1, v2, v1), bytesPerPixel);
+                setPixel(rowBuffer, dst, yRow[yIndex] & 0xFF, getFancyChromaValue(u2, u1, u2, u1), getFancyChromaValue(v2, v1, v2, v1), bytesPerPixel);
                 dst += bytesPerPixel;
                 yIndex++;
             }
         }
 
         if (yIndex < yOffset + width) {
-            setPixel(rowBuffer, dst, yRow[yIndex], uRow[uOffset + chromaWidth - 1] & 0xFF, vRow[vOffset + chromaWidth - 1] & 0xFF, bytesPerPixel);
+            setPixel(rowBuffer, dst, yRow[yIndex] & 0xFF, uRow[uOffset + chromaWidth - 1] & 0xFF, vRow[vOffset + chromaWidth - 1] & 0xFF, bytesPerPixel);
         }
     }
 

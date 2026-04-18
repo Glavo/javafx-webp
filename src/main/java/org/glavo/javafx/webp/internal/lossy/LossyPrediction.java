@@ -52,10 +52,14 @@ final class LossyPrediction {
     }
 
     static void addResidue(byte[] pblock, int[] rblock, int y0, int x0, int stride) {
+        addResidue(pblock, rblock, 0, y0, x0, stride);
+    }
+
+    static void addResidue(byte[] pblock, int[] rblock, int blockOffset, int y0, int x0, int stride) {
         int pos = y0 * stride + x0;
         for (int row = 0; row < 4; row++) {
             for (int x = 0; x < 4; x++) {
-                int value = (pblock[pos + x] & 0xFF) + rblock[row * 4 + x];
+                int value = (pblock[pos + x] & 0xFF) + rblock[blockOffset + row * 4 + x];
                 pblock[pos + x] = (byte) Math.max(0, Math.min(255, value));
             }
             pos += stride;
@@ -82,9 +86,7 @@ final class LossyPrediction {
                     case HU -> predictBhupred(ws, x0, y0, stride);
                 }
 
-                int[] residue = new int[16];
-                System.arraycopy(resdata, i * 16, residue, 0, 16);
-                addResidue(ws, residue, y0, x0, stride);
+                addResidue(ws, resdata, i * 16, y0, x0, stride);
             }
         }
     }

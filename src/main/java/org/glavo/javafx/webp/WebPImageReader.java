@@ -2,13 +2,14 @@ package org.glavo.javafx.webp;
 
 import org.glavo.javafx.webp.internal.PixelScaler;
 import org.glavo.javafx.webp.internal.ScalePlan;
-import org.glavo.javafx.webp.internal.codec.DesktopLossyDecoder;
 import org.glavo.javafx.webp.internal.codec.ExtendedWebP;
 import org.glavo.javafx.webp.internal.codec.ParsedFrameDescriptor;
 import org.glavo.javafx.webp.internal.codec.ParsedWebPImage;
 import org.glavo.javafx.webp.internal.codec.WebPSequentialParser;
+import org.glavo.javafx.webp.internal.lossy.Vp8Decoder;
 import org.glavo.javafx.webp.internal.lossless.LosslessDecoder;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -310,7 +311,38 @@ public final class WebPImageReader implements AutoCloseable {
             return rgba;
         }
 
-        return DesktopLossyDecoder.decodeRgba(descriptor.width(), descriptor.height(), descriptor.alphaChunk(), descriptor.imageChunk());
+        byte[] rgba = Vp8Decoder.decodeRgba(new ByteArrayInputStream(descriptor.imageChunk()), false);
+        if (descriptor.alphaChunk() != null) {
+            ExtendedWebP.AlphaChunk alphaChunk = ExtendedWebP.parseAlphaChunk(
+                    descriptor.alphaChunk(),
+                    descriptor.width(),
+                    descriptor.height()
+            );
+            applyAlphaChunk(rgba, descriptor.width(), descriptor.height(), alphaChunk);
+        }
+        return rgba;
+    }
+
+    private static void applyAlphaChunk(
+            byte[] rgba,
+            int width,
+            int height,
+            ExtendedWebP.AlphaChunk alphaChunk
+    ) {
+        byte[] alphaData = alphaChunk.data();
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                int pixelIndex = y * width + x;
+                int predictor = ExtendedWebP.getAlphaPredictor(
+                        x,
+                        y,
+                        width,
+                        alphaChunk.filteringMethod(),
+                        rgba
+                );
+                rgba[pixelIndex * 4 + 3] = (byte) (((alphaData[pixelIndex] & 0xFF) + predictor) & 0xFF);
+            }
+        }
     }
 
     private void ensureOpen() throws WebPException {

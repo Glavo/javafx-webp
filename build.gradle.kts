@@ -30,8 +30,6 @@ dependencies {
     allConfigs("org.openjfx:javafx-controls:$javafxVersion:$javafxPlatform")
     allConfigs("org.openjfx:javafx-graphics:$javafxVersion:$javafxPlatform")
 
-    implementation("com.twelvemonkeys.imageio:imageio-webp:3.13.1")
-
     testImplementation(platform("org.junit:junit-bom:6.0.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
@@ -65,5 +63,4 @@ tasks.register<JavaExec>("run") {
 
 tasks.test {
     useJUnitPlatform()
-    systemProperty("java.awt.headless", "true")
 }

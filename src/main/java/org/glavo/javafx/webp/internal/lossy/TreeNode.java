@@ -5,14 +5,14 @@ package org.glavo.javafx.webp.internal.lossy;
  */
 final class TreeNode {
 
-    static final TreeNode UNINIT = new TreeNode((byte) 0, (byte) 0, (byte) 0, (byte) 0);
+    static final TreeNode UNINIT = new TreeNode((byte) 0, (byte) 0, 0, (byte) 0);
 
     final byte left;
     final byte right;
-    final byte prob;
+    int prob;
     final byte index;
 
-    TreeNode(byte left, byte right, byte prob, byte index) {
+    TreeNode(byte left, byte right, int prob, byte index) {
         this.left = left;
         this.right = right;
         this.prob = prob;
