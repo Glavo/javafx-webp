@@ -49,13 +49,7 @@ try (InputStream input = Files.newInputStream(Path.of("/image.webp"))) {
 Stream frames from an animated WebP:
 
 ```java
-import org.glavo.javafx.webp.WebPDecoder;
-import org.glavo.javafx.webp.WebPFrame;
-import org.glavo.javafx.webp.WebPImageReader;
-
-import java.io.InputStream;
-
-try (InputStream input = getClass().getResourceAsStream("/animated.webp");
+try (InputStream input = Files.newInputStream(Path.of("/animated.webp"));
      WebPImageReader reader = WebPDecoder.open(input)) {
     while (true) {
         var next = reader.readNextFrame();
