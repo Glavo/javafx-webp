@@ -2,7 +2,7 @@
 
 Pure Java WebP decoding library for JavaFX.
 
-The project provides a public API in `org.glavo.javafx.webp` for decoding static and animated WebP
+The project can decode static and animated WebP
 images without using `java.desktop` or any external WebP codec at runtime. Decoded frames are
 available as tightly packed non-premultiplied `RGBA` buffers and can be converted directly to
 JavaFX `WritableImage` instances.
@@ -15,14 +15,11 @@ JavaFX `WritableImage` instances.
 - Decode-time scaling with JavaFX `Image`-compatible `requestedWidth`, `requestedHeight`, `preserveRatio`, and `smooth` semantics
 - Raw ICC, EXIF, and XMP metadata extraction
 - No dependency on `java.desktop`
-- Simple JavaFX viewer demo in `org.glavo.javafx.webp.WebPViewerApp`
 
 ## Requirements
 
 - Java 17 or newer
 - JavaFX runtime for `javafx-base`, `javafx-graphics`
-
-The module name is `org.glavo.javafx.webp`.
 
 ## Basic Usage
 
