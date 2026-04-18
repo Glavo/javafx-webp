@@ -1,12 +1,10 @@
 package org.glavo.javafx.webp;
 
 import javafx.scene.image.Image;
+import javafx.scene.image.PixelReader;
 import org.junit.jupiter.api.Test;
 
-import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -167,8 +165,8 @@ final class WebPDecoderTest {
             for (int x : xs) {
                 int pixelOffset = (y * width + x) * 4;
                 for (int channel = 0; channel < 4; channel++) {
-                    int expectedValue = expected[pixelOffset + channel] & 0xFF;
-                    int actualValue = actual[pixelOffset + channel] & 0xFF;
+                    int expectedValue = visibleChannelValue(expected, pixelOffset, channel);
+                    int actualValue = visibleChannelValue(actual, pixelOffset, channel);
                     int delta = Math.abs(expectedValue - actualValue);
                     if (delta > maxChannelDelta) {
                         fail("sample pixel mismatch at (" + x + ", " + y + "), channel " + channel
@@ -186,29 +184,37 @@ final class WebPDecoderTest {
 
         int maxObservedDelta = 0;
         for (int i = 0; i < expected.length; i++) {
-            int delta = Math.abs((expected[i] & 0xFF) - (actual[i] & 0xFF));
+            int channel = i & 0b11;
+            int pixelOffset = i - channel;
+            int expectedValue = visibleChannelValue(expected, pixelOffset, channel);
+            int actualValue = visibleChannelValue(actual, pixelOffset, channel);
+            int delta = Math.abs(expectedValue - actualValue);
             maxObservedDelta = Math.max(maxObservedDelta, delta);
             if (delta > maxChannelDelta) {
-                fail("pixel mismatch at byte " + i + ": expected=" + (expected[i] & 0xFF)
-                        + ", actual=" + (actual[i] & 0xFF) + ", maxObservedDelta=" + maxObservedDelta);
+                fail("pixel mismatch at byte " + i + ": expected=" + expectedValue
+                        + ", actual=" + actualValue + ", maxObservedDelta=" + maxObservedDelta);
             }
         }
     }
 
     private static byte[] readPngAsRgba(String resource) throws Exception {
         try (InputStream input = resource(resource)) {
-            BufferedImage image = ImageIO.read(input);
-            assertNotNull(image, "reference PNG must decode");
-            int width = image.getWidth();
-            int height = image.getHeight();
-            int[] pixels = image.getRGB(0, 0, width, height, null, 0, width);
+            Image image = new Image(input);
+            assertFalse(image.isError(), "reference PNG must decode");
+            int width = (int) image.getWidth();
+            int height = (int) image.getHeight();
+            PixelReader pixelReader = image.getPixelReader();
+            assertNotNull(pixelReader, "reference PNG must expose pixels");
             byte[] rgba = new byte[width * height * 4];
-            for (int pixelIndex = 0, rgbaIndex = 0; pixelIndex < pixels.length; pixelIndex++) {
-                int argb = pixels[pixelIndex];
-                rgba[rgbaIndex++] = (byte) ((argb >>> 16) & 0xFF);
-                rgba[rgbaIndex++] = (byte) ((argb >>> 8) & 0xFF);
-                rgba[rgbaIndex++] = (byte) (argb & 0xFF);
-                rgba[rgbaIndex++] = (byte) ((argb >>> 24) & 0xFF);
+            for (int y = 0; y < height; y++) {
+                for (int x = 0; x < width; x++) {
+                    int argb = pixelReader.getArgb(x, y);
+                    int rgbaIndex = (y * width + x) * 4;
+                    rgba[rgbaIndex] = (byte) ((argb >>> 16) & 0xFF);
+                    rgba[rgbaIndex + 1] = (byte) ((argb >>> 8) & 0xFF);
+                    rgba[rgbaIndex + 2] = (byte) (argb & 0xFF);
+                    rgba[rgbaIndex + 3] = (byte) ((argb >>> 24) & 0xFF);
+                }
             }
             return rgba;
         }
@@ -219,6 +225,14 @@ final class WebPDecoderTest {
         byte[] bytes = new byte[buffer.remaining()];
         buffer.get(bytes);
         return bytes;
+    }
+
+    private static int visibleChannelValue(byte[] rgba, int pixelOffset, int channel) {
+        int alpha = rgba[pixelOffset + 3] & 0xFF;
+        if (channel == 3) {
+            return alpha;
+        }
+        return (rgba[pixelOffset + channel] & 0xFF) * alpha / 255;
     }
 
     private static int[] sampleCoordinates(int size) {

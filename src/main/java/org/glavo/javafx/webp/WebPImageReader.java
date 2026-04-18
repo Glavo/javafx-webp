@@ -1,51 +1,57 @@
 package org.glavo.javafx.webp;
 
-import org.glavo.javafx.webp.internal.BufferedImages;
+import org.glavo.javafx.webp.internal.PixelScaler;
 import org.glavo.javafx.webp.internal.ScalePlan;
-import org.glavo.javafx.webp.internal.WebPContainerInfo;
-import org.glavo.javafx.webp.internal.WebPContainerParser;
+import org.glavo.javafx.webp.internal.codec.DesktopLossyDecoder;
+import org.glavo.javafx.webp.internal.codec.ExtendedWebP;
+import org.glavo.javafx.webp.internal.codec.ParsedFrameDescriptor;
+import org.glavo.javafx.webp.internal.codec.ParsedWebPImage;
+import org.glavo.javafx.webp.internal.codec.WebPSequentialParser;
+import org.glavo.javafx.webp.internal.lossless.LosslessDecoder;
 
-import javax.imageio.IIOException;
-import javax.imageio.ImageIO;
-import javax.imageio.ImageReader;
-import javax.imageio.stream.ImageInputStream;
-import java.awt.image.BufferedImage;
-import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Iterator;
 import java.util.Optional;
 
 /**
  * Forward-only reader for WebP content.
  *
- * <p>The reader exposes already-decoded frames in presentation order. It keeps only the state
- * required to decode the next frame and therefore avoids materializing the entire animation unless
- * the caller explicitly collects all frames.
+ * <p>The reader parses the RIFF container sequentially, buffers only the encoded frame payloads
+ * needed for later decode, and decodes frames on demand in presentation order. Scaling is applied
+ * immediately after each frame is decoded or composited so callers do not need to allocate both
+ * source-sized and target-sized frame lists.
  */
 public final class WebPImageReader implements AutoCloseable {
 
-    static {
-        ImageIO.scanForPlugins();
-    }
+    private static final byte[] TRANSPARENT = {0, 0, 0, 0};
 
-    private final ImageInputStream input;
-    private final ImageReader reader;
-    private final WebPContainerInfo info;
+    private final AutoCloseable ownedInput;
+    private final ParsedWebPImage image;
     private final ScalePlan scalePlan;
     private int nextFrameIndex;
     private boolean closed;
 
-    private WebPImageReader(ImageInputStream input, ImageReader reader, WebPContainerInfo info, ScalePlan scalePlan) {
-        this.input = input;
-        this.reader = reader;
-        this.info = info;
+    private byte[] animationCanvas;
+    private boolean disposeNextFrame = true;
+    private int previousFrameWidth;
+    private int previousFrameHeight;
+    private int previousFrameX;
+    private int previousFrameY;
+
+    private WebPImageReader(AutoCloseable ownedInput, ParsedWebPImage image, ScalePlan scalePlan) {
+        this.ownedInput = ownedInput;
+        this.image = image;
         this.scalePlan = scalePlan;
     }
 
     /**
      * Opens a streaming reader for a generic byte stream.
+     *
+     * <p>The stream is consumed during the open step so the reader can retain only the encoded
+     * frame payloads that are required for later decode. The supplied stream remains owned by the
+     * returned reader and is closed when {@link #close()} is called.
      *
      * @param source the WebP byte stream
      * @param options scaling options that mirror JavaFX {@code Image} loading parameters
@@ -54,11 +60,9 @@ public final class WebPImageReader implements AutoCloseable {
      */
     public static WebPImageReader open(InputStream source, WebPImageLoadOptions options) throws WebPException {
         try {
-            ImageInputStream input = ImageIO.createImageInputStream(source);
-            if (input == null) {
-                throw new WebPException("Could not create ImageInputStream for source stream");
-            }
-            return open(input, options);
+            ParsedWebPImage image = WebPSequentialParser.parse(source);
+            ScalePlan scalePlan = ScalePlan.create(image.sourceWidth(), image.sourceHeight(), options);
+            return new WebPImageReader(source, image, scalePlan);
         } catch (IOException ex) {
             if (ex instanceof WebPException webpException) {
                 throw webpException;
@@ -77,41 +81,25 @@ public final class WebPImageReader implements AutoCloseable {
      * @throws WebPException if the file cannot be parsed or decoded
      */
     public static WebPImageReader open(Path path, WebPImageLoadOptions options) throws IOException, WebPException {
-        ImageInputStream input = ImageIO.createImageInputStream(path.toFile());
-        if (input == null) {
-            throw new IOException("Could not create ImageInputStream for file: " + path);
-        }
-        return open(input, options);
-    }
-
-    private static WebPImageReader open(ImageInputStream input, WebPImageLoadOptions options) throws WebPException {
+        InputStream input = Files.newInputStream(path);
         try {
-            WebPContainerInfo info = WebPContainerParser.parse(input);
-            ScalePlan scalePlan = ScalePlan.create(info.sourceWidth(), info.sourceHeight(), options);
-            input.seek(0);
-
-            ImageReader reader = createReader();
-            reader.setInput(input, false, false);
-
-            return new WebPImageReader(input, reader, info, scalePlan);
+            ParsedWebPImage image = WebPSequentialParser.parse(input);
+            ScalePlan scalePlan = ScalePlan.create(image.sourceWidth(), image.sourceHeight(), options);
+            return new WebPImageReader(input, image, scalePlan);
         } catch (IOException | RuntimeException ex) {
-            closeQuietly(input);
+            try {
+                input.close();
+            } catch (IOException suppressed) {
+                ex.addSuppressed(suppressed);
+            }
             if (ex instanceof WebPException webpException) {
                 throw webpException;
             }
-            throw new WebPException("Failed to open WebP decoder", ex);
+            if (ex instanceof IOException ioException) {
+                throw ioException;
+            }
+            throw new WebPException("Failed to open WebP file: " + path, ex);
         }
-    }
-
-    private static ImageReader createReader() throws WebPException {
-        Iterator<ImageReader> readers = ImageIO.getImageReadersByMIMEType("image/webp");
-        if (!readers.hasNext()) {
-            readers = ImageIO.getImageReadersByFormatName("webp");
-        }
-        if (!readers.hasNext()) {
-            throw new WebPException("No ImageIO WebP reader is available. Ensure the WebP plugin dependency is present at runtime.");
-        }
-        return readers.next();
     }
 
     /**
@@ -120,7 +108,7 @@ public final class WebPImageReader implements AutoCloseable {
      * @return the source canvas width in pixels
      */
     public int getSourceWidth() {
-        return info.sourceWidth();
+        return image.sourceWidth();
     }
 
     /**
@@ -129,7 +117,7 @@ public final class WebPImageReader implements AutoCloseable {
      * @return the source canvas height in pixels
      */
     public int getSourceHeight() {
-        return info.sourceHeight();
+        return image.sourceHeight();
     }
 
     /**
@@ -156,7 +144,7 @@ public final class WebPImageReader implements AutoCloseable {
      * @return {@code true} if any decoded frame may carry alpha
      */
     public boolean hasAlpha() {
-        return info.hasAlpha();
+        return image.hasAlpha();
     }
 
     /**
@@ -165,7 +153,7 @@ public final class WebPImageReader implements AutoCloseable {
      * @return {@code true} for animated WebP containers
      */
     public boolean isAnimated() {
-        return info.animated();
+        return image.animated();
     }
 
     /**
@@ -174,7 +162,7 @@ public final class WebPImageReader implements AutoCloseable {
      * @return {@code true} if any frame is lossy
      */
     public boolean isLossy() {
-        return info.lossy();
+        return image.lossy();
     }
 
     /**
@@ -185,7 +173,7 @@ public final class WebPImageReader implements AutoCloseable {
      * @return the number of presentation frames
      */
     public int getFrameCount() {
-        return info.frames().size();
+        return image.frames().size();
     }
 
     /**
@@ -196,7 +184,7 @@ public final class WebPImageReader implements AutoCloseable {
      * @return the loop count
      */
     public LoopCount getLoopCount() {
-        return info.loopCount();
+        return image.loopCount();
     }
 
     /**
@@ -207,7 +195,7 @@ public final class WebPImageReader implements AutoCloseable {
      * @return the total cycle duration in milliseconds
      */
     public long getLoopDurationMillis() {
-        return info.loopDurationMillis();
+        return image.loopDurationMillis();
     }
 
     /**
@@ -216,7 +204,7 @@ public final class WebPImageReader implements AutoCloseable {
      * @return the metadata container
      */
     public WebPMetadata getMetadata() {
-        return info.metadata();
+        return image.metadata();
     }
 
     /**
@@ -225,44 +213,35 @@ public final class WebPImageReader implements AutoCloseable {
      * @return {@code true} when no more frames are available
      */
     public boolean isComplete() {
-        return nextFrameIndex >= info.frames().size();
+        return nextFrameIndex >= image.frames().size();
     }
 
     /**
      * Decodes the next frame, if available.
      *
-     * <p>The method reads a single frame from the underlying decoder, scales it according to
-     * {@link WebPImageLoadOptions}, converts it to tightly packed RGBA pixels, and advances the
-     * reader to the next presentation step.
+     * <p>Each returned frame is already composited to the full canvas for animated images and
+     * already scaled according to the load options supplied when the reader was opened.
      *
      * @return the next frame, or {@link Optional#empty()} when the stream is exhausted
      * @throws WebPException if decoding fails
      */
     public Optional<WebPFrame> readNextFrame() throws WebPException {
         ensureOpen();
-        if (nextFrameIndex >= info.frames().size()) {
+        if (nextFrameIndex >= image.frames().size()) {
             return Optional.empty();
         }
 
-        try {
-            BufferedImage frame = reader.read(nextFrameIndex);
-            if (frame == null) {
-                throw new WebPException("ImageIO returned a null frame for index " + nextFrameIndex);
-            }
+        ParsedFrameDescriptor descriptor = image.frames().get(nextFrameIndex++);
+        byte[] frameRgba = decodeFrameRgba(descriptor);
+        byte[] output;
 
-            // Animated WebP readers generally return a fully composited canvas-sized frame. If the
-            // provider returns a smaller intermediate image, we still normalize and scale the data
-            // that was returned instead of attempting to guess undisclosed composition rules.
-            BufferedImage scaled = BufferedImages.scale(frame, scalePlan);
-            byte[] rgba = BufferedImages.toRgba(scaled);
-            int durationMillis = info.frames().get(nextFrameIndex).durationMillis();
-            nextFrameIndex++;
-            return Optional.of(new WebPFrame(scalePlan.targetWidth(), scalePlan.targetHeight(), durationMillis, rgba));
-        } catch (IIOException ex) {
-            throw new WebPException("Failed to decode WebP frame " + nextFrameIndex, ex);
-        } catch (IOException ex) {
-            throw new WebPException("I/O failure while decoding WebP frame " + nextFrameIndex, ex);
+        if (image.animated()) {
+            output = decodeAnimatedFrame(descriptor, frameRgba);
+        } else {
+            output = PixelScaler.scaleRgba(frameRgba, descriptor.width(), descriptor.height(), scalePlan);
         }
+
+        return Optional.of(new WebPFrame(scalePlan.targetWidth(), scalePlan.targetHeight(), descriptor.durationMillis(), output));
     }
 
     @Override
@@ -271,23 +250,72 @@ public final class WebPImageReader implements AutoCloseable {
             return;
         }
         closed = true;
-        try {
-            reader.dispose();
-        } finally {
-            input.close();
+        if (ownedInput != null) {
+            try {
+                ownedInput.close();
+            } catch (Exception ex) {
+                if (ex instanceof IOException ioException) {
+                    throw ioException;
+                }
+                throw new IOException("Failed to close the WebP reader input", ex);
+            }
         }
+    }
+
+    private byte[] decodeAnimatedFrame(ParsedFrameDescriptor descriptor, byte[] frameRgba) {
+        if (animationCanvas == null) {
+            animationCanvas = new byte[image.sourceWidth() * image.sourceHeight() * 4];
+        }
+
+        byte[] clearColor = null;
+        if (disposeNextFrame) {
+            clearColor = TRANSPARENT;
+        }
+
+        /*
+         * The public API always exposes already-composited RGBA frames. Even opaque VP8 frames are
+         * normalized to RGBA before composition so the animation canvas can remain a single format.
+         */
+        ExtendedWebP.compositeFrame(
+                animationCanvas,
+                image.sourceWidth(),
+                image.sourceHeight(),
+                clearColor,
+                frameRgba,
+                descriptor.x(),
+                descriptor.y(),
+                descriptor.width(),
+                descriptor.height(),
+                true,
+                descriptor.useAlphaBlending(),
+                previousFrameWidth,
+                previousFrameHeight,
+                previousFrameX,
+                previousFrameY
+        );
+
+        previousFrameWidth = descriptor.width();
+        previousFrameHeight = descriptor.height();
+        previousFrameX = descriptor.x();
+        previousFrameY = descriptor.y();
+        disposeNextFrame = descriptor.disposeToBackground();
+
+        return PixelScaler.scaleRgba(animationCanvas, image.sourceWidth(), image.sourceHeight(), scalePlan);
+    }
+
+    private byte[] decodeFrameRgba(ParsedFrameDescriptor descriptor) throws WebPException {
+        if (descriptor.lossless()) {
+            byte[] rgba = new byte[descriptor.width() * descriptor.height() * 4];
+            new LosslessDecoder(descriptor.imageChunk()).decodeFrame(descriptor.width(), descriptor.height(), false, rgba);
+            return rgba;
+        }
+
+        return DesktopLossyDecoder.decodeRgba(descriptor.width(), descriptor.height(), descriptor.alphaChunk(), descriptor.imageChunk());
     }
 
     private void ensureOpen() throws WebPException {
         if (closed) {
             throw new WebPException("Reader is already closed");
-        }
-    }
-
-    private static void closeQuietly(Closeable closeable) {
-        try {
-            closeable.close();
-        } catch (IOException ignored) {
         }
     }
 }
