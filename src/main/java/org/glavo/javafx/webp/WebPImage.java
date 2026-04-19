@@ -52,7 +52,7 @@ public final class WebPImage {
     /// @param loopDurationMillis the total duration of one animation cycle
     /// @param metadata the extracted metadata
     /// @param frames the decoded frames in presentation order
-    public WebPImage(
+    WebPImage(
             int sourceWidth,
             int sourceHeight,
             int width,
