@@ -18,7 +18,6 @@ package org.glavo.javafx.webp;
 import org.jetbrains.annotations.NotNullByDefault;
 
 import java.util.List;
-import java.util.Optional;
 
 /// Fully decoded WebP content.
 ///
@@ -76,6 +75,10 @@ public final class WebPImage {
         this.loopDurationMillis = loopDurationMillis;
         this.metadata = metadata;
         this.frames = List.copyOf(frames);
+
+        if (this.frames.isEmpty()) {
+            throw new IllegalArgumentException("Frames cannot be empty");
+        }
     }
 
     /// Returns the source canvas width before scaling.
@@ -162,7 +165,7 @@ public final class WebPImage {
     /// Returns the first frame, if present.
     ///
     /// @return the first frame for still images or animations
-    public Optional<WebPFrame> getFirstFrame() {
-        return frames.isEmpty() ? Optional.empty() : Optional.of(frames.get(0));
+    public WebPFrame getFirstFrame() {
+        return frames.get(0);
     }
 }
