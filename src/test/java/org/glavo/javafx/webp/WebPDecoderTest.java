@@ -70,11 +70,11 @@ final class WebPDecoderTest {
 
             List<WebPFrame> frames = new ArrayList<>();
             while (true) {
-                var frame = reader.readNextFrame();
-                if (frame.isEmpty()) {
+                WebPFrame frame = reader.readNextFrame();
+                if (frame == null) {
                     break;
                 }
-                frames.add(frame.get());
+                frames.add(frame);
             }
 
             assertEquals(3, frames.size());
@@ -98,11 +98,11 @@ final class WebPDecoderTest {
 
             List<WebPFrame> frames = new ArrayList<>();
             while (true) {
-                var frame = reader.readNextFrame();
-                if (frame.isEmpty()) {
+                WebPFrame frame = reader.readNextFrame();
+                if (frame == null) {
                     break;
                 }
-                frames.add(frame.get());
+                frames.add(frame);
             }
 
             assertEquals(4, frames.size());
@@ -134,9 +134,10 @@ final class WebPDecoderTest {
         assertEquals(1, eager.getFrames().size());
 
         try (WebPImageReader reader = WebPDecoder.open(resource("images/gallery2-1_webp_ll.webp"), options)) {
-            WebPFrame streamed = reader.readNextFrame().orElseThrow();
+            WebPFrame streamed = reader.readNextFrame();
+            assertNotNull(streamed);
             assertFramePixelEquals(streamed, eager.getFrames().get(0), 0);
-            assertTrue(reader.readNextFrame().isEmpty());
+            assertNull(reader.readNextFrame());
             assertTrue(reader.isComplete());
         }
     }
@@ -158,14 +159,18 @@ final class WebPDecoderTest {
             assertEquals(31, reader.getWidth());
             assertEquals(17, reader.getHeight());
 
-            WebPFrame frame1 = reader.readNextFrame().orElseThrow();
-            WebPFrame frame2 = reader.readNextFrame().orElseThrow();
-            WebPFrame frame3 = reader.readNextFrame().orElseThrow();
+            WebPFrame frame1 = reader.readNextFrame();
+            WebPFrame frame2 = reader.readNextFrame();
+            WebPFrame frame3 = reader.readNextFrame();
+
+            assertNotNull(frame1);
+            assertNotNull(frame2);
+            assertNotNull(frame3);
 
             assertFramePixelEquals(frame1, eager.getFrames().get(0), 0);
             assertFramePixelEquals(frame2, eager.getFrames().get(1), 0);
             assertFramePixelEquals(frame3, eager.getFrames().get(2), 0);
-            assertTrue(reader.readNextFrame().isEmpty());
+            assertNull(reader.readNextFrame());
         }
     }
 
@@ -410,9 +415,9 @@ final class WebPDecoderTest {
     }
 
     private static void assertEmptyMetadata(WebPMetadata metadata) {
-        assertTrue(metadata.getIccProfile().isEmpty());
-        assertTrue(metadata.getExifMetadata().isEmpty());
-        assertTrue(metadata.getXmpMetadata().isEmpty());
+        assertNull(metadata.getIccProfile());
+        assertNull(metadata.getExifMetadata());
+        assertNull(metadata.getXmpMetadata());
     }
 
     private static InputStream resource(String path) {

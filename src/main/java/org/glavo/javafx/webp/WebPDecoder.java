@@ -135,7 +135,10 @@ public final class WebPDecoder {
     /// @throws WebPException if parsing or decoding fails
     public static WritableImage decodeFirstFrameImage(InputStream input, WebPImageLoadOptions options) throws WebPException {
         try (WebPImageReader reader = open(input, options)) {
-            WebPFrame frame = reader.readNextFrame().orElseThrow(() -> new WebPException("WebP stream contains no decodable frames"));
+            WebPFrame frame = reader.readNextFrame();
+            if (frame == null) {
+                throw new WebPException("WebP stream contains no decodable frames");
+            }
             return frame.toWritableImage();
         } catch (IOException ex) {
             if (ex instanceof WebPException webpException) {
@@ -148,11 +151,11 @@ public final class WebPDecoder {
     private static WebPImage collect(WebPImageReader reader) throws IOException {
         List<WebPFrame> frames = new ArrayList<>(Math.max(1, reader.getFrameCount()));
         while (true) {
-            var next = reader.readNextFrame();
-            if (next.isEmpty()) {
+            WebPFrame next = reader.readNextFrame();
+            if (next == null) {
                 break;
             }
-            frames.add(next.get());
+            frames.add(next);
         }
         return new WebPImage(
                 reader.getSourceWidth(),

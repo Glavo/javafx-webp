@@ -56,12 +56,10 @@ Stream frames from an animated WebP:
 try (InputStream input = Files.newInputStream(Path.of("/animated.webp"));
      WebPImageReader reader = WebPDecoder.open(input)) {
     while (true) {
-        var next = reader.readNextFrame();
-        if (next.isEmpty()) {
+        WebPFrame frame = reader.readNextFrame();
+        if (frame == null) {
             break;
         }
-
-        WebPFrame frame = next.get();
         System.out.println("duration = " + frame.getDurationMillis());
     }
 }

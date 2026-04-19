@@ -18,8 +18,6 @@ package org.glavo.javafx.webp;
 import org.jetbrains.annotations.NotNullByDefault;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Optional;
-
 /// Raw metadata chunks extracted from a WebP container.
 ///
 /// The WebP specification stores ICC, EXIF and XMP payloads as opaque byte arrays. This class
@@ -54,31 +52,27 @@ public final class WebPMetadata {
 
     /// Returns the ICC profile chunk payload.
     ///
-    /// @return the ICC profile bytes if present
-    public Optional<byte[]> getIccProfile() {
-        return optionalCopy(iccProfile);
+    /// @return a defensive copy of the ICC profile bytes, or `null` if absent
+    public byte @Nullable [] getIccProfile() {
+        return copyOrNull(iccProfile);
     }
 
     /// Returns the EXIF metadata chunk payload.
     ///
-    /// @return the EXIF bytes if present
-    public Optional<byte[]> getExifMetadata() {
-        return optionalCopy(exifMetadata);
+    /// @return a defensive copy of the EXIF bytes, or `null` if absent
+    public byte @Nullable [] getExifMetadata() {
+        return copyOrNull(exifMetadata);
     }
 
     /// Returns the XMP metadata chunk payload.
     ///
-    /// @return the XMP bytes if present
-    public Optional<byte[]> getXmpMetadata() {
-        return optionalCopy(xmpMetadata);
+    /// @return a defensive copy of the XMP bytes, or `null` if absent
+    public byte @Nullable [] getXmpMetadata() {
+        return copyOrNull(xmpMetadata);
     }
 
     private static byte @Nullable [] copyOrNull(byte @Nullable [] value) {
         return value == null ? null : value.clone();
-    }
-
-    private static Optional<byte[]> optionalCopy(byte @Nullable [] value) {
-        return value == null ? Optional.empty() : Optional.of(value.clone());
     }
 
     @Override

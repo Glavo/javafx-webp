@@ -95,11 +95,11 @@ final class LibWebpPortedTest {
             try (WebPImageReader reader = WebPDecoder.open(new ChunkedInputStream(bytes, 7), options)) {
                 List<WebPFrame> frames = new ArrayList<>();
                 while (true) {
-                    var next = reader.readNextFrame();
-                    if (next.isEmpty()) {
+                    WebPFrame next = reader.readNextFrame();
+                    if (next == null) {
                         break;
                     }
-                    frames.add(next.get());
+                    frames.add(next);
                 }
                 assertEquals(eager.getFrames().size(), frames.size(), resource);
                 assertTrue(reader.isComplete(), resource);
@@ -171,11 +171,11 @@ final class LibWebpPortedTest {
 
             int frames = 0;
             while (true) {
-                var frame = reader.readNextFrame();
-                if (frame.isEmpty()) {
+                WebPFrame frame = reader.readNextFrame();
+                if (frame == null) {
                     break;
                 }
-                assertTrue(frame.get().getDurationMillis() >= 0, resourceName);
+                assertTrue(frame.getDurationMillis() >= 0, resourceName);
                 frames++;
             }
 
@@ -197,7 +197,7 @@ final class LibWebpPortedTest {
         assertOnlyWebPException(() -> WebPDecoder.decodeFirstFrameImage(new ByteArrayInputStream(data), options));
         assertOnlyWebPException(() -> {
             try (WebPImageReader reader = WebPDecoder.open(new ChunkedInputStream(data, 5), options)) {
-                while (reader.readNextFrame().isPresent()) {
+                while (reader.readNextFrame() != null) {
                     // Consume until exhausted or a WebPException is raised.
                 }
             }

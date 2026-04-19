@@ -32,7 +32,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Optional;
 
 /// Forward-only reader for WebP content.
 ///
@@ -211,12 +210,12 @@ public final class WebPImageReader implements AutoCloseable {
     /// Each returned frame is already composited to the full canvas for animated images and
     /// already scaled according to the load options supplied when the reader was opened.
     ///
-    /// @return the next frame, or [Optional#empty()] when the stream is exhausted
+    /// @return the next frame, or `null` when the stream is exhausted
     /// @throws WebPException if decoding fails
-    public Optional<WebPFrame> readNextFrame() throws WebPException {
+    public @Nullable WebPFrame readNextFrame() throws WebPException {
         ensureOpen();
         if (nextFrameIndex >= image.frames().size()) {
-            return Optional.empty();
+            return null;
         }
 
         ParsedFrameDescriptor descriptor = image.frames().get(nextFrameIndex++);
@@ -229,7 +228,7 @@ public final class WebPImageReader implements AutoCloseable {
             output = PixelScaler.scaleArgb(frameArgb, descriptor.width(), descriptor.height(), scalePlan);
         }
 
-        return Optional.of(new WebPFrame(scalePlan.targetWidth(), scalePlan.targetHeight(), descriptor.durationMillis(), output));
+        return new WebPFrame(scalePlan.targetWidth(), scalePlan.targetHeight(), descriptor.durationMillis(), output);
     }
 
     @Override
