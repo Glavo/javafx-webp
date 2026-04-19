@@ -6,8 +6,8 @@ Pure Java WebP decoding library for JavaFX.
 
 The project can decode static and animated WebP
 images without using `java.desktop` or any external WebP codec at runtime. Decoded frames are
-available as tightly packed non-premultiplied `RGBA` buffers and can be converted directly to
-JavaFX `WritableImage` instances.
+available as tightly packed non-premultiplied `ARGB` `int[]` buffers and can be written directly
+to JavaFX `WritableImage` instances through `PixelFormat.getIntArgbInstance()`.
 
 This project was ported with Codex assistance from [image-rs/image-webp](https://github.com/image-rs/image-webp).
 
@@ -73,6 +73,7 @@ try (InputStream input = Files.newInputStream(Path.of("/animated.webp"));
 - `WebPImageReader`: forward-only reader for frame-by-frame decode
 - `WebPImage`: immutable fully decoded result
 - `WebPFrame`: one decoded presentation frame
+  exposes packed non-premultiplied `ARGB` pixels via `getArgbPixels()` and `getArgbArray()`
 - `WebPImageLoadOptions`: JavaFX-style scaling options
 - `WebPMetadata`: raw ICC, EXIF, and XMP payloads
 - `LoopCount`: animation loop count abstraction
@@ -92,4 +93,3 @@ The test suite includes:
 - tests ported from `image-rs`
 - tests ported from `libwebp`
 - tests backed by the downloaded `libwebp-test-data` corpus
-

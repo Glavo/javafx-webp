@@ -17,11 +17,11 @@ package org.glavo.javafx.webp;
 
 import javafx.scene.image.Image;
 import javafx.scene.image.PixelReader;
+import org.glavo.javafx.webp.internal.Argb;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -132,6 +132,29 @@ final class WebPDecoderTest {
     }
 
     @Test
+    void writableImageRoundTripsArgbPixels() throws Exception {
+        WebPFrame frame = WebPDecoder.decodeAll(resource("images/gallery2-1_webp_a.webp")).getFrames().get(0);
+        var image = frame.toWritableImage();
+        var reader = image.getPixelReader();
+        assertNotNull(reader);
+
+        int[] expected = frame.getArgbArray();
+        for (int y : sampleCoordinates(frame.getHeight())) {
+            for (int x : sampleCoordinates(frame.getWidth())) {
+                int expectedPixel = expected[y * frame.getWidth() + x];
+                int actualPixel = reader.getArgb(x, y);
+                for (int channel = 0; channel < 4; channel++) {
+                    assertEquals(
+                            visibleChannelValue(expectedPixel, channel),
+                            visibleChannelValue(actualPixel, channel),
+                            "pixel at (" + x + ", " + y + "), channel " + channel
+                    );
+                }
+            }
+        }
+    }
+
+    @Test
     void rejectsInvalidContainer() {
         byte[] invalid = "not a webp".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
         assertThrows(WebPException.class, () -> WebPDecoder.decodeAll(new ByteArrayInputStream(invalid)));
@@ -165,8 +188,8 @@ final class WebPDecoderTest {
     }
 
     private static void assertFrameSamplesClose(WebPFrame frame, String referenceResource, int maxChannelDelta) throws Exception {
-        byte[] expected = readPngAsRgba(referenceResource);
-        byte[] actual = readPixels(frame);
+        int[] expected = readPngAsArgb(referenceResource);
+        int[] actual = readPixels(frame);
         assertEquals(expected.length, actual.length, "pixel buffer size");
 
         int width = frame.getWidth();
@@ -176,10 +199,10 @@ final class WebPDecoderTest {
 
         for (int y : ys) {
             for (int x : xs) {
-                int pixelOffset = (y * width + x) * 4;
+                int pixelIndex = y * width + x;
                 for (int channel = 0; channel < 4; channel++) {
-                    int expectedValue = visibleChannelValue(expected, pixelOffset, channel);
-                    int actualValue = visibleChannelValue(actual, pixelOffset, channel);
+                    int expectedValue = visibleChannelValue(expected[pixelIndex], channel);
+                    int actualValue = visibleChannelValue(actual[pixelIndex], channel);
                     int delta = Math.abs(expectedValue - actualValue);
                     if (delta > maxChannelDelta) {
                         fail("sample pixel mismatch at (" + x + ", " + y + "), channel " + channel
@@ -191,26 +214,26 @@ final class WebPDecoderTest {
     }
 
     private static void assertFrameClose(WebPFrame frame, String referenceResource, int maxChannelDelta) throws Exception {
-        byte[] expected = readPngAsRgba(referenceResource);
-        byte[] actual = readPixels(frame);
+        int[] expected = readPngAsArgb(referenceResource);
+        int[] actual = readPixels(frame);
         assertEquals(expected.length, actual.length, "pixel buffer size");
 
         int maxObservedDelta = 0;
         for (int i = 0; i < expected.length; i++) {
-            int channel = i & 0b11;
-            int pixelOffset = i - channel;
-            int expectedValue = visibleChannelValue(expected, pixelOffset, channel);
-            int actualValue = visibleChannelValue(actual, pixelOffset, channel);
-            int delta = Math.abs(expectedValue - actualValue);
-            maxObservedDelta = Math.max(maxObservedDelta, delta);
-            if (delta > maxChannelDelta) {
-                fail("pixel mismatch at byte " + i + ": expected=" + expectedValue
-                        + ", actual=" + actualValue + ", maxObservedDelta=" + maxObservedDelta);
+            for (int channel = 0; channel < 4; channel++) {
+                int expectedValue = visibleChannelValue(expected[i], channel);
+                int actualValue = visibleChannelValue(actual[i], channel);
+                int delta = Math.abs(expectedValue - actualValue);
+                maxObservedDelta = Math.max(maxObservedDelta, delta);
+                if (delta > maxChannelDelta) {
+                    fail("pixel mismatch at pixel " + i + ", channel " + channel + ": expected=" + expectedValue
+                            + ", actual=" + actualValue + ", maxObservedDelta=" + maxObservedDelta);
+                }
             }
         }
     }
 
-    private static byte[] readPngAsRgba(String resource) throws Exception {
+    private static int[] readPngAsArgb(String resource) throws Exception {
         try (InputStream input = resource(resource)) {
             Image image = new Image(input);
             assertFalse(image.isError(), "reference PNG must decode");
@@ -218,34 +241,32 @@ final class WebPDecoderTest {
             int height = (int) image.getHeight();
             PixelReader pixelReader = image.getPixelReader();
             assertNotNull(pixelReader, "reference PNG must expose pixels");
-            byte[] rgba = new byte[width * height * 4];
+            int[] argb = new int[width * height];
             for (int y = 0; y < height; y++) {
                 for (int x = 0; x < width; x++) {
-                    int argb = pixelReader.getArgb(x, y);
-                    int rgbaIndex = (y * width + x) * 4;
-                    rgba[rgbaIndex] = (byte) ((argb >>> 16) & 0xFF);
-                    rgba[rgbaIndex + 1] = (byte) ((argb >>> 8) & 0xFF);
-                    rgba[rgbaIndex + 2] = (byte) (argb & 0xFF);
-                    rgba[rgbaIndex + 3] = (byte) ((argb >>> 24) & 0xFF);
+                    argb[y * width + x] = pixelReader.getArgb(x, y);
                 }
             }
-            return rgba;
+            return argb;
         }
     }
 
-    private static byte[] readPixels(WebPFrame frame) {
-        ByteBuffer buffer = frame.getPixels();
-        byte[] bytes = new byte[buffer.remaining()];
-        buffer.get(bytes);
-        return bytes;
+    private static int[] readPixels(WebPFrame frame) {
+        return frame.getArgbArray();
     }
 
-    private static int visibleChannelValue(byte[] rgba, int pixelOffset, int channel) {
-        int alpha = rgba[pixelOffset + 3] & 0xFF;
+    private static int visibleChannelValue(int argb, int channel) {
+        int alpha = argb >>> 24;
         if (channel == 3) {
             return alpha;
         }
-        return (rgba[pixelOffset + channel] & 0xFF) * alpha / 255;
+        int value = switch (channel) {
+            case 0 -> Argb.red(argb);
+            case 1 -> Argb.green(argb);
+            case 2 -> Argb.blue(argb);
+            default -> throw new IllegalArgumentException("Invalid channel: " + channel);
+        };
+        return value * alpha / 255;
     }
 
     private static int[] sampleCoordinates(int size) {

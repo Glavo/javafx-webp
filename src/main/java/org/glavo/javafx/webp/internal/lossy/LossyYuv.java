@@ -15,6 +15,8 @@
  */
 package org.glavo.javafx.webp.internal.lossy;
 
+import org.glavo.javafx.webp.internal.Argb;
+
 /// YUV to RGB conversion helpers used by the VP8 decoder.
 final class LossyYuv {
 
@@ -22,6 +24,60 @@ final class LossyYuv {
     private static final int YUV_HALF = 1 << (YUV_FIX - 1);
 
     private LossyYuv() {
+    }
+
+    static void fillArgbBufferFancy(int[] buffer, byte[] yBuffer, byte[] uBuffer, byte[] vBuffer, int width, int height, int bufferWidth) {
+        int chromaBufferWidth = bufferWidth / 2;
+        int chromaWidth = (width + 1) / 2;
+
+        fillRowFancyWithOneUvRowArgb(buffer, 0, yBuffer, 0, uBuffer, 0, vBuffer, 0, width);
+
+        int rowBufferOffset = width;
+        int yOffset = bufferWidth;
+        int chromaWindowOffset = 0;
+
+        while (rowBufferOffset + width * 2 <= buffer.length && yOffset + bufferWidth * 2 <= height * bufferWidth) {
+            fillRowFancyWithTwoUvRowsArgb(
+                    buffer, rowBufferOffset,
+                    yBuffer, yOffset,
+                    uBuffer, chromaWindowOffset,
+                    uBuffer, chromaWindowOffset + chromaBufferWidth,
+                    vBuffer, chromaWindowOffset,
+                    vBuffer, chromaWindowOffset + chromaBufferWidth,
+                    width, chromaWidth
+            );
+            fillRowFancyWithTwoUvRowsArgb(
+                    buffer, rowBufferOffset + width,
+                    yBuffer, yOffset + bufferWidth,
+                    uBuffer, chromaWindowOffset + chromaBufferWidth,
+                    uBuffer, chromaWindowOffset,
+                    vBuffer, chromaWindowOffset + chromaBufferWidth,
+                    vBuffer, chromaWindowOffset,
+                    width, chromaWidth
+            );
+
+            rowBufferOffset += width * 2;
+            yOffset += bufferWidth * 2;
+            chromaWindowOffset += chromaBufferWidth;
+        }
+
+        if (rowBufferOffset < buffer.length) {
+            int chromaHeight = (height + 1) / 2;
+            int startChromaIndex = (chromaHeight - 1) * chromaBufferWidth;
+            fillRowFancyWithOneUvRowArgb(buffer, rowBufferOffset, yBuffer, yOffset, uBuffer, startChromaIndex, vBuffer, startChromaIndex, width);
+        }
+    }
+
+    static void fillArgbBufferSimple(int[] buffer, byte[] yBuffer, byte[] uBuffer, byte[] vBuffer, int width, int chromaWidth, int bufferWidth) {
+        int chromaStride = bufferWidth / 2;
+        int chromaRow = 0;
+
+        for (int y = 0; y < buffer.length / width; y++) {
+            fillArgbRowSimple(yBuffer, y * bufferWidth, uBuffer, chromaRow * chromaStride, vBuffer, chromaRow * chromaStride, width, chromaWidth, buffer, y * width);
+            if ((y & 1) != 0) {
+                chromaRow++;
+            }
+        }
     }
 
     static void fillRgbBufferFancy(byte[] buffer, byte[] yBuffer, byte[] uBuffer, byte[] vBuffer, int width, int height, int bufferWidth, int bytesPerPixel) {
@@ -163,6 +219,86 @@ final class LossyYuv {
         }
     }
 
+    private static void fillRowFancyWithTwoUvRowsArgb(
+            int[] rowBuffer,
+            int rowBufferOffset,
+            byte[] yRow,
+            int yOffset,
+            byte[] uRow1,
+            int uOffset1,
+            byte[] uRow2,
+            int uOffset2,
+            byte[] vRow1,
+            int vOffset1,
+            byte[] vRow2,
+            int vOffset2,
+            int width,
+            int chromaWidth
+    ) {
+        rowBuffer[rowBufferOffset] = argbPixel(
+                yRow[yOffset] & 0xFF,
+                getFancyChromaValue(uRow1[uOffset1] & 0xFF, uRow1[uOffset1] & 0xFF, uRow2[uOffset2] & 0xFF, uRow2[uOffset2] & 0xFF),
+                getFancyChromaValue(vRow1[vOffset1] & 0xFF, vRow1[vOffset1] & 0xFF, vRow2[vOffset2] & 0xFF, vRow2[vOffset2] & 0xFF)
+        );
+
+        int dst = rowBufferOffset + 1;
+        int yIndex = yOffset + 1;
+        for (int chroma = 0; chroma + 1 < chromaWidth && yIndex + 1 < yOffset + width; chroma++) {
+            int u1 = uRow1[uOffset1 + chroma] & 0xFF;
+            int u2 = uRow1[uOffset1 + chroma + 1] & 0xFF;
+            int u3 = uRow2[uOffset2 + chroma] & 0xFF;
+            int u4 = uRow2[uOffset2 + chroma + 1] & 0xFF;
+            int v1 = vRow1[vOffset1 + chroma] & 0xFF;
+            int v2 = vRow1[vOffset1 + chroma + 1] & 0xFF;
+            int v3 = vRow2[vOffset2 + chroma] & 0xFF;
+            int v4 = vRow2[vOffset2 + chroma + 1] & 0xFF;
+
+            rowBuffer[dst++] = argbPixel(yRow[yIndex] & 0xFF, getFancyChromaValue(u1, u2, u3, u4), getFancyChromaValue(v1, v2, v3, v4));
+            yIndex++;
+            if (yIndex < yOffset + width) {
+                rowBuffer[dst++] = argbPixel(yRow[yIndex] & 0xFF, getFancyChromaValue(u2, u1, u4, u3), getFancyChromaValue(v2, v1, v4, v3));
+                yIndex++;
+            }
+        }
+
+        if (yIndex < yOffset + width) {
+            int finalU1 = uRow1[uOffset1 + chromaWidth - 1] & 0xFF;
+            int finalU2 = uRow2[uOffset2 + chromaWidth - 1] & 0xFF;
+            int finalV1 = vRow1[vOffset1 + chromaWidth - 1] & 0xFF;
+            int finalV2 = vRow2[vOffset2 + chromaWidth - 1] & 0xFF;
+            rowBuffer[dst] = argbPixel(
+                    yRow[yIndex] & 0xFF,
+                    getFancyChromaValue(finalU1, finalU1, finalU2, finalU2),
+                    getFancyChromaValue(finalV1, finalV1, finalV2, finalV2)
+            );
+        }
+    }
+
+    private static void fillRowFancyWithOneUvRowArgb(int[] rowBuffer, int rowBufferOffset, byte[] yRow, int yOffset, byte[] uRow, int uOffset, byte[] vRow, int vOffset, int width) {
+        rowBuffer[rowBufferOffset] = argbPixel(yRow[yOffset] & 0xFF, uRow[uOffset] & 0xFF, vRow[vOffset] & 0xFF);
+
+        int dst = rowBufferOffset + 1;
+        int yIndex = yOffset + 1;
+        int chromaWidth = (width + 1) / 2;
+        for (int chroma = 0; chroma + 1 < chromaWidth && yIndex + 1 < yOffset + width; chroma++) {
+            int u1 = uRow[uOffset + chroma] & 0xFF;
+            int u2 = uRow[uOffset + chroma + 1] & 0xFF;
+            int v1 = vRow[vOffset + chroma] & 0xFF;
+            int v2 = vRow[vOffset + chroma + 1] & 0xFF;
+
+            rowBuffer[dst++] = argbPixel(yRow[yIndex] & 0xFF, getFancyChromaValue(u1, u2, u1, u2), getFancyChromaValue(v1, v2, v1, v2));
+            yIndex++;
+            if (yIndex < yOffset + width) {
+                rowBuffer[dst++] = argbPixel(yRow[yIndex] & 0xFF, getFancyChromaValue(u2, u1, u2, u1), getFancyChromaValue(v2, v1, v2, v1));
+                yIndex++;
+            }
+        }
+
+        if (yIndex < yOffset + width) {
+            rowBuffer[dst] = argbPixel(yRow[yIndex] & 0xFF, uRow[uOffset + chromaWidth - 1] & 0xFF, vRow[vOffset + chromaWidth - 1] & 0xFF);
+        }
+    }
+
     private static void fillRgbaRowSimple(byte[] yVec, int yOffset, byte[] uVec, int uOffset, byte[] vVec, int vOffset, int width, int chromaWidth, byte[] rgba, int dstOffset, int bytesPerPixel) {
         int yIndex = yOffset;
         int dst = dstOffset;
@@ -180,6 +316,26 @@ final class LossyYuv {
             if (yIndex < yOffset + width) {
                 setPixelFromCoefficients(rgba, dst, yVec[yIndex] & 0xFF, rCoeff, guCoeff, gvCoeff, bCoeff, bytesPerPixel);
                 dst += bytesPerPixel;
+                yIndex++;
+            }
+        }
+    }
+
+    private static void fillArgbRowSimple(byte[] yVec, int yOffset, byte[] uVec, int uOffset, byte[] vVec, int vOffset, int width, int chromaWidth, int[] argb, int dstOffset) {
+        int yIndex = yOffset;
+        int dst = dstOffset;
+        for (int chroma = 0; chroma < chromaWidth && yIndex < yOffset + width; chroma++) {
+            int u = uVec[uOffset + chroma] & 0xFF;
+            int v = vVec[vOffset + chroma] & 0xFF;
+            int rCoeff = mulhi(v, 26149);
+            int guCoeff = mulhi(u, 6419);
+            int gvCoeff = mulhi(v, 13320);
+            int bCoeff = mulhi(u, 33050);
+
+            argb[dst++] = argbPixelFromCoefficients(yVec[yIndex] & 0xFF, rCoeff, guCoeff, gvCoeff, bCoeff);
+            yIndex++;
+            if (yIndex < yOffset + width) {
+                argb[dst++] = argbPixelFromCoefficients(yVec[yIndex] & 0xFF, rCoeff, guCoeff, gvCoeff, bCoeff);
                 yIndex++;
             }
         }
@@ -263,6 +419,18 @@ final class LossyYuv {
         if (bytesPerPixel == 4) {
             rgb[offset + 3] = (byte) 0xFF;
         }
+    }
+
+    private static int argbPixel(int y, int u, int v) {
+        return Argb.opaque(yuvToR(y, v), yuvToG(y, u, v), yuvToB(y, u));
+    }
+
+    private static int argbPixelFromCoefficients(int y, int rCoeff, int guCoeff, int gvCoeff, int bCoeff) {
+        return Argb.opaque(
+                clip(mulhi(y, 19077) + rCoeff - 14234),
+                clip(mulhi(y, 19077) - guCoeff - gvCoeff + 8708),
+                clip(mulhi(y, 19077) + bCoeff - 17685)
+        );
     }
 
     private static byte rgbToY(byte[] rgb, int offset) {

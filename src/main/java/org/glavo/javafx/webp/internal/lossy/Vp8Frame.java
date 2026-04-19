@@ -18,7 +18,7 @@ package org.glavo.javafx.webp.internal.lossy;
 /// Decoded VP8 frame planes.
 ///
 /// The VP8 bitstream stores one full-resolution luma plane plus half-resolution chroma planes.
-/// This object keeps those planes until the caller requests RGB or RGBA pixels.
+/// This object keeps those planes until the caller requests packed `ARGB` pixels.
 final class Vp8Frame {
 
     int width;
@@ -43,23 +43,11 @@ final class Vp8Frame {
         return remainder > 0 ? width + (16 - remainder) : width;
     }
 
-    void fillRgb(byte[] buffer, boolean fancyUpsampling) {
+    void fillArgb(int[] buffer, boolean fancyUpsampling) {
         if (fancyUpsampling) {
-            LossyYuv.fillRgbBufferFancy(buffer, yBuffer, uBuffer, vBuffer, width, height, bufferWidth(), 3);
+            LossyYuv.fillArgbBufferFancy(buffer, yBuffer, uBuffer, vBuffer, width, height, bufferWidth());
         } else {
-            LossyYuv.fillRgbBufferSimple(buffer, yBuffer, uBuffer, vBuffer, width, chromaWidth(), bufferWidth(), 3);
+            LossyYuv.fillArgbBufferSimple(buffer, yBuffer, uBuffer, vBuffer, width, chromaWidth(), bufferWidth());
         }
-    }
-
-    void fillRgba(byte[] buffer, boolean fancyUpsampling) {
-        if (fancyUpsampling) {
-            LossyYuv.fillRgbBufferFancy(buffer, yBuffer, uBuffer, vBuffer, width, height, bufferWidth(), 4);
-        } else {
-            LossyYuv.fillRgbBufferSimple(buffer, yBuffer, uBuffer, vBuffer, width, chromaWidth(), bufferWidth(), 4);
-        }
-    }
-
-    int getRgbBufferSize() {
-        return yBuffer.length * 3;
     }
 }

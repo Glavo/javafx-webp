@@ -16,6 +16,7 @@
 package org.glavo.javafx.webp.internal.lossless;
 
 import org.glavo.javafx.webp.WebPException;
+import org.glavo.javafx.webp.internal.Argb;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -24,7 +25,7 @@ import java.util.List;
 /// Pure-Java VP8L decoder.
 ///
 /// The implementation follows the structure of the reference `image-webp` lossless
-/// decoder. It decodes to tightly packed non-premultiplied RGBA pixels.
+/// decoder. It decodes to tightly packed non-premultiplied `ARGB` pixels.
 public final class LosslessDecoder {
 
     private static final int GREEN = 0;
@@ -51,15 +52,15 @@ public final class LosslessDecoder {
         this.bitReader = new LosslessBitReader(data);
     }
 
-    /// Decodes a VP8L frame into RGBA pixels.
+    /// Decodes a VP8L frame into `ARGB` pixels.
     ///
     /// @param width the expected width
     /// @param height the expected height
     /// @param implicitDimensions whether the VP8L header should be skipped because dimensions are
     ///                           defined externally, as in ALPH chunks
-    /// @param buffer the RGBA destination buffer
+    /// @param buffer the `ARGB` destination buffer
     /// @throws WebPException if the bitstream is malformed or inconsistent
-    public void decodeFrame(int width, int height, boolean implicitDimensions, byte[] buffer) throws WebPException {
+    public void decodeFrame(int width, int height, boolean implicitDimensions, int[] buffer) throws WebPException {
         resetState();
 
         if (implicitDimensions) {
@@ -85,10 +86,8 @@ public final class LosslessDecoder {
         }
 
         int transformedWidth = readTransforms();
-        int transformedSize = transformedWidth * this.height * 4;
-        decodeImageStream(transformedWidth, this.height, true, buffer, transformedSize);
+        decodeImageStream(transformedWidth, this.height, true, buffer);
 
-        int imageSize = transformedSize;
         int currentWidth = transformedWidth;
         for (int i = transformOrderSize - 1; i >= 0; i--) {
             LosslessTransforms.Transform transform = transforms[transformOrder[i]];
@@ -98,7 +97,6 @@ public final class LosslessDecoder {
                 case LosslessTransforms.SUBTRACT_GREEN -> LosslessTransforms.applySubtractGreenTransform(buffer);
                 case LosslessTransforms.COLOR_INDEXING -> {
                     currentWidth = this.width;
-                    imageSize = currentWidth * this.height * 4;
                     LosslessTransforms.applyColorIndexingTransform(buffer, currentWidth, this.height, transform.tableSize, transform.data);
                 }
                 default -> throw new WebPException("Unknown VP8L transform kind");
@@ -113,10 +111,10 @@ public final class LosslessDecoder {
         height = 0;
     }
 
-    private void decodeImageStream(int xsize, int ysize, boolean isArgbImage, byte[] data, int expectedSize) throws WebPException {
+    private void decodeImageStream(int xsize, int ysize, boolean readMeta, int[] data) throws WebPException {
         Integer colorCacheBits = readColorCache();
         ColorCache colorCache = colorCacheBits == null ? null : new ColorCache(colorCacheBits);
-        HuffmanInfo huffmanInfo = readHuffmanCodes(isArgbImage, xsize, ysize, colorCache);
+        HuffmanInfo huffmanInfo = readHuffmanCodes(readMeta, xsize, ysize, colorCache);
         decodeImageData(xsize, ysize, huffmanInfo, data);
     }
 
@@ -135,23 +133,23 @@ public final class LosslessDecoder {
                     int sizeBits = bitReader.readBits(3) + 2;
                     int blockXSize = LosslessTransforms.subsampleSize(xsize, sizeBits);
                     int blockYSize = LosslessTransforms.subsampleSize(height, sizeBits);
-                    byte[] predictorData = new byte[blockXSize * blockYSize * 4];
-                    decodeImageStream(blockXSize, blockYSize, false, predictorData, predictorData.length);
+                    int[] predictorData = new int[blockXSize * blockYSize];
+                    decodeImageStream(blockXSize, blockYSize, false, predictorData);
                     transform = LosslessTransforms.Transform.predictor(sizeBits, predictorData);
                 }
                 case LosslessTransforms.COLOR -> {
                     int sizeBits = bitReader.readBits(3) + 2;
                     int blockXSize = LosslessTransforms.subsampleSize(xsize, sizeBits);
                     int blockYSize = LosslessTransforms.subsampleSize(height, sizeBits);
-                    byte[] transformData = new byte[blockXSize * blockYSize * 4];
-                    decodeImageStream(blockXSize, blockYSize, false, transformData, transformData.length);
+                    int[] transformData = new int[blockXSize * blockYSize];
+                    decodeImageStream(blockXSize, blockYSize, false, transformData);
                     transform = LosslessTransforms.Transform.color(sizeBits, transformData);
                 }
                 case LosslessTransforms.SUBTRACT_GREEN -> transform = LosslessTransforms.Transform.subtractGreen();
                 case LosslessTransforms.COLOR_INDEXING -> {
                     int colorTableSize = bitReader.readBits(8) + 1;
-                    byte[] colorMap = new byte[colorTableSize * 4];
-                    decodeImageStream(colorTableSize, 1, false, colorMap, colorMap.length);
+                    int[] colorMap = new int[colorTableSize];
+                    decodeImageStream(colorTableSize, 1, false, colorMap);
 
                     int bits;
                     if (colorTableSize <= 2) {
@@ -174,9 +172,9 @@ public final class LosslessDecoder {
         return xsize;
     }
 
-    private void adjustColorMap(byte[] colorMap) {
-        for (int i = 4; i < colorMap.length; i++) {
-            colorMap[i] = (byte) ((colorMap[i] + colorMap[i - 4]) & 0xFF);
+    private void adjustColorMap(int[] colorMap) {
+        for (int i = 1; i < colorMap.length; i++) {
+            colorMap[i] = Argb.add(colorMap[i], colorMap[i - 1]);
         }
     }
 
@@ -192,11 +190,11 @@ public final class LosslessDecoder {
             huffmanXSize = LosslessTransforms.subsampleSize(xsize, huffmanBits);
             huffmanYSize = LosslessTransforms.subsampleSize(ysize, huffmanBits);
 
-            byte[] data = new byte[huffmanXSize * huffmanYSize * 4];
-            decodeImageStream(huffmanXSize, huffmanYSize, false, data, data.length);
+            int[] data = new int[huffmanXSize * huffmanYSize];
+            decodeImageStream(huffmanXSize, huffmanYSize, false, data);
             entropyImage = new int[huffmanXSize * huffmanYSize];
             for (int i = 0; i < entropyImage.length; i++) {
-                int metaHuffCode = ((data[i * 4] & 0xFF) << 8) | (data[i * 4 + 1] & 0xFF);
+                int metaHuffCode = (Argb.red(data[i]) << 8) | Argb.green(data[i]);
                 if (metaHuffCode >= numHuffGroups) {
                     numHuffGroups = metaHuffCode + 1;
                 }
@@ -312,7 +310,7 @@ public final class LosslessDecoder {
         return codeLengths;
     }
 
-    private void decodeImageData(int width, int height, HuffmanInfo huffmanInfo, byte[] data) throws WebPException {
+    private void decodeImageData(int width, int height, HuffmanInfo huffmanInfo, int[] data) throws WebPException {
         int numValues = width * height;
         LosslessHuffmanTree[] tree = huffmanInfo.huffmanCodeGroups.get(huffmanInfo.getHuffIndex(0, 0));
         int index = 0;
@@ -341,10 +339,10 @@ public final class LosslessDecoder {
                         int red = tree[RED].readSymbol(bitReader);
                         int blue = tree[BLUE].readSymbol(bitReader);
                         int alpha = tree[ALPHA].readSymbol(bitReader);
-                        byte[] value = {(byte) red, (byte) code, (byte) blue, (byte) alpha};
+                        int value = Argb.pack(alpha, red, code, blue);
 
                         for (int i = 0; i < count; i++) {
-                            System.arraycopy(value, 0, data, (index + i) * 4, 4);
+                            data[index + i] = value;
                         }
                         if (huffmanInfo.colorCache != null) {
                             huffmanInfo.colorCache.insert(value);
@@ -365,14 +363,11 @@ public final class LosslessDecoder {
                 }
                 int alpha = tree[ALPHA].readSymbol(bitReader);
 
-                int offset = index * 4;
-                data[offset] = (byte) red;
-                data[offset + 1] = (byte) green;
-                data[offset + 2] = (byte) blue;
-                data[offset + 3] = (byte) alpha;
+                int value = Argb.pack(alpha, red, green, blue);
+                data[index] = value;
 
                 if (huffmanInfo.colorCache != null) {
-                    huffmanInfo.colorCache.insert(new byte[]{(byte) red, (byte) green, (byte) blue, (byte) alpha});
+                    huffmanInfo.colorCache.insert(value);
                 }
                 index++;
             } else if (code < 256 + 24) {
@@ -387,28 +382,17 @@ public final class LosslessDecoder {
                 }
 
                 if (dist == 1) {
-                    byte[] value = {
-                            data[(index - 1) * 4],
-                            data[(index - 1) * 4 + 1],
-                            data[(index - 1) * 4 + 2],
-                            data[(index - 1) * 4 + 3]
-                    };
+                    int value = data[index - 1];
                     for (int i = 0; i < length; i++) {
-                        System.arraycopy(value, 0, data, (index + i) * 4, 4);
+                        data[index + i] = value;
                     }
                 } else {
-                    for (int i = 0; i < length * 4; i++) {
-                        data[index * 4 + i] = data[index * 4 + i - dist * 4];
+                    for (int i = 0; i < length; i++) {
+                        data[index + i] = data[index + i - dist];
                     }
                     if (huffmanInfo.colorCache != null) {
                         for (int i = 0; i < length; i++) {
-                            byte[] pixel = {
-                                    data[(index + i) * 4],
-                                    data[(index + i) * 4 + 1],
-                                    data[(index + i) * 4 + 2],
-                                    data[(index + i) * 4 + 3]
-                            };
-                            huffmanInfo.colorCache.insert(pixel);
+                            huffmanInfo.colorCache.insert(data[index + i]);
                         }
                     }
                 }
@@ -417,16 +401,14 @@ public final class LosslessDecoder {
                 if (huffmanInfo.colorCache == null) {
                     throw new WebPException("Corrupt VP8L bitstream");
                 }
-                byte[] color = huffmanInfo.colorCache.lookup(code - 280);
-                System.arraycopy(color, 0, data, index * 4, 4);
+                data[index] = huffmanInfo.colorCache.lookup(code - 280);
                 index++;
 
                 if (index < nextBlockStart) {
                     LosslessHuffmanTree.PeekedSymbol peeked = tree[GREEN].peekSymbol(bitReader);
                     if (peeked != null && peeked.symbol() >= 280) {
                         bitReader.consume(peeked.bits());
-                        byte[] cached = huffmanInfo.colorCache.lookup(peeked.symbol() - 280);
-                        System.arraycopy(cached, 0, data, index * 4, 4);
+                        data[index] = huffmanInfo.colorCache.lookup(peeked.symbol() - 280);
                         index++;
                     }
                 }
@@ -492,23 +474,19 @@ public final class LosslessDecoder {
 
     private static final class ColorCache {
         final int colorCacheBits;
-        final byte[][] colorCache;
+        final int[] colorCache;
 
         private ColorCache(int colorCacheBits) {
             this.colorCacheBits = colorCacheBits;
-            this.colorCache = new byte[1 << colorCacheBits][4];
+            this.colorCache = new int[1 << colorCacheBits];
         }
 
-        void insert(byte[] color) {
-            int colorU32 = ((color[0] & 0xFF) << 16)
-                    | ((color[1] & 0xFF) << 8)
-                    | (color[2] & 0xFF)
-                    | ((color[3] & 0xFF) << 24);
-            int index = (0x1e35a7bd * colorU32) >>> (32 - colorCacheBits);
-            System.arraycopy(color, 0, colorCache[index], 0, 4);
+        void insert(int color) {
+            int index = (0x1e35a7bd * color) >>> (32 - colorCacheBits);
+            colorCache[index] = color;
         }
 
-        byte[] lookup(int index) {
+        int lookup(int index) {
             return colorCache[index];
         }
     }

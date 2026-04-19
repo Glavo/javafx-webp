@@ -15,6 +15,7 @@
  */
 package org.glavo.javafx.webp.internal.codec;
 
+import org.glavo.javafx.webp.internal.Argb;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
@@ -30,17 +31,17 @@ final class AlphaBlendingTest {
             for (int a1 = 11; a1 < 255; a1++) {
                 for (int r2 = 0; r2 < 255; r2++) {
                     for (int a2 = 11; a2 < 255; a2++) {
-                        byte[] optimized = AlphaBlending.blend(
-                                new byte[]{(byte) r1, 0, 0, (byte) a1},
-                                new byte[]{(byte) r2, 0, 0, (byte) a2}
+                        int optimized = AlphaBlending.blend(
+                                Argb.pack(a1, r1, 0, 0),
+                                Argb.pack(a2, r2, 0, 0)
                         );
-                        byte[] reference = referenceBlend(
-                                new byte[]{(byte) r1, 0, 0, (byte) a1},
-                                new byte[]{(byte) r2, 0, 0, (byte) a2}
+                        int reference = referenceBlend(
+                                Argb.pack(a1, r1, 0, 0),
+                                Argb.pack(a2, r2, 0, 0)
                         );
 
                         for (int i = 0; i < 4; i++) {
-                            int delta = Math.abs((optimized[i] & 0xFF) - (reference[i] & 0xFF));
+                            int delta = Math.abs(channel(optimized, i) - channel(reference, i));
                             assertTrue(delta <= 3,
                                     "Mismatch in results. optimized="
                                             + describe(optimized)
@@ -56,9 +57,9 @@ final class AlphaBlendingTest {
         }
     }
 
-    private static byte[] referenceBlend(byte[] buffer, byte[] canvas) {
-        double canvasAlpha = canvas[3] & 0xFF;
-        double bufferAlpha = buffer[3] & 0xFF;
+    private static int referenceBlend(int buffer, int canvas) {
+        double canvasAlpha = Argb.alpha(canvas);
+        double bufferAlpha = Argb.alpha(buffer);
         double blendAlphaValue = bufferAlpha + canvasAlpha * (1.0 - bufferAlpha / 255.0);
         int blendAlpha = (int) blendAlphaValue;
 
@@ -66,21 +67,31 @@ final class AlphaBlendingTest {
         int g = 0;
         int b = 0;
         if (blendAlpha != 0) {
-            r = (int) (((buffer[0] & 0xFF) * bufferAlpha
-                    + (canvas[0] & 0xFF) * canvasAlpha * (1.0 - bufferAlpha / 255.0))
+            r = (int) ((Argb.red(buffer) * bufferAlpha
+                    + Argb.red(canvas) * canvasAlpha * (1.0 - bufferAlpha / 255.0))
                     / blendAlphaValue);
-            g = (int) (((buffer[1] & 0xFF) * bufferAlpha
-                    + (canvas[1] & 0xFF) * canvasAlpha * (1.0 - bufferAlpha / 255.0))
+            g = (int) ((Argb.green(buffer) * bufferAlpha
+                    + Argb.green(canvas) * canvasAlpha * (1.0 - bufferAlpha / 255.0))
                     / blendAlphaValue);
-            b = (int) (((buffer[2] & 0xFF) * bufferAlpha
-                    + (canvas[2] & 0xFF) * canvasAlpha * (1.0 - bufferAlpha / 255.0))
+            b = (int) ((Argb.blue(buffer) * bufferAlpha
+                    + Argb.blue(canvas) * canvasAlpha * (1.0 - bufferAlpha / 255.0))
                     / blendAlphaValue);
         }
 
-        return new byte[]{(byte) r, (byte) g, (byte) b, (byte) blendAlpha};
+        return Argb.pack(blendAlpha, r, g, b);
     }
 
-    private static String describe(byte[] rgba) {
-        return "[" + (rgba[0] & 0xFF) + ", " + (rgba[1] & 0xFF) + ", " + (rgba[2] & 0xFF) + ", " + (rgba[3] & 0xFF) + "]";
+    private static int channel(int argb, int channel) {
+        return switch (channel) {
+            case 0 -> Argb.red(argb);
+            case 1 -> Argb.green(argb);
+            case 2 -> Argb.blue(argb);
+            case 3 -> Argb.alpha(argb);
+            default -> throw new IllegalArgumentException("Invalid channel index: " + channel);
+        };
+    }
+
+    private static String describe(int argb) {
+        return "[" + Argb.red(argb) + ", " + Argb.green(argb) + ", " + Argb.blue(argb) + ", " + Argb.alpha(argb) + "]";
     }
 }

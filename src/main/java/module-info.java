@@ -18,6 +18,7 @@
 ///
 /// The module exposes a public API in `org.glavo.javafx.webp` for reading static and
 /// animated WebP images, extracting metadata, and converting decoded frames to JavaFX images.
+/// Decoded frame pixels are exposed as packed non-premultiplied `ARGB` integers.
 /// Two entry points are provided:
 ///
 ///   - [org.glavo.javafx.webp.WebPDecoder] for eager convenience methods;

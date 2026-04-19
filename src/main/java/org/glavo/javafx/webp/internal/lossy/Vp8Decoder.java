@@ -108,7 +108,7 @@ public final class Vp8Decoder {
         }
     }
 
-    /// Decodes one raw VP8 frame payload to tightly packed RGBA pixels.
+    /// Decodes one raw VP8 frame payload to packed `ARGB` pixels.
     ///
     /// The input stream must expose exactly the payload bytes of a `VP8` chunk. The
     /// decoder reconstructs the internal YUV planes first and only performs color conversion once
@@ -116,14 +116,14 @@ public final class Vp8Decoder {
     ///
     /// @param input the raw VP8 frame payload
     /// @param fancyUpsampling whether to use the high-quality chroma upsampler
-    /// @return tightly packed non-premultiplied RGBA pixels
+    /// @return tightly packed non-premultiplied `ARGB` pixels
     /// @throws WebPException if the VP8 bitstream is malformed
-    public static byte[] decodeRgba(InputStream input, boolean fancyUpsampling) throws WebPException {
+    public static int[] decodeArgb(InputStream input, boolean fancyUpsampling) throws WebPException {
         try {
             Vp8Frame frame = new Vp8Decoder(input).decodeFrameInternal();
-            byte[] rgba = new byte[frame.width * frame.height * 4];
-            frame.fillRgba(rgba, fancyUpsampling);
-            return rgba;
+            int[] argb = new int[frame.width * frame.height];
+            frame.fillArgb(argb, fancyUpsampling);
+            return argb;
         } catch (IOException ex) {
             if (ex instanceof WebPException webPException) {
                 throw webPException;

@@ -39,7 +39,7 @@ import java.util.Optional;
 /// source-sized and target-sized frame lists.
 public final class WebPImageReader implements AutoCloseable {
 
-    private static final byte[] TRANSPARENT = {0, 0, 0, 0};
+    private static final int TRANSPARENT = 0x00000000;
 
     private final AutoCloseable ownedInput;
     private final ParsedWebPImage image;
@@ -47,7 +47,7 @@ public final class WebPImageReader implements AutoCloseable {
     private int nextFrameIndex;
     private boolean closed;
 
-    private byte[] animationCanvas;
+    private int[] animationCanvas;
     private boolean disposeNextFrame = true;
     private int previousFrameWidth;
     private int previousFrameHeight;
@@ -216,13 +216,13 @@ public final class WebPImageReader implements AutoCloseable {
         }
 
         ParsedFrameDescriptor descriptor = image.frames().get(nextFrameIndex++);
-        byte[] frameRgba = decodeFrameRgba(descriptor);
-        byte[] output;
+        int[] frameArgb = decodeFrameArgb(descriptor);
+        int[] output;
 
         if (image.animated()) {
-            output = decodeAnimatedFrame(descriptor, frameRgba);
+            output = decodeAnimatedFrame(descriptor, frameArgb);
         } else {
-            output = PixelScaler.scaleRgba(frameRgba, descriptor.width(), descriptor.height(), scalePlan);
+            output = PixelScaler.scaleArgb(frameArgb, descriptor.width(), descriptor.height(), scalePlan);
         }
 
         return Optional.of(new WebPFrame(scalePlan.targetWidth(), scalePlan.targetHeight(), descriptor.durationMillis(), output));
@@ -246,31 +246,31 @@ public final class WebPImageReader implements AutoCloseable {
         }
     }
 
-    private byte[] decodeAnimatedFrame(ParsedFrameDescriptor descriptor, byte[] frameRgba) {
+    private int[] decodeAnimatedFrame(ParsedFrameDescriptor descriptor, int[] frameArgb) {
         if (animationCanvas == null) {
-            animationCanvas = new byte[image.sourceWidth() * image.sourceHeight() * 4];
+            animationCanvas = new int[image.sourceWidth() * image.sourceHeight()];
         }
 
-        byte[] clearColor = null;
+        Integer clearColor = null;
         if (disposeNextFrame) {
             clearColor = TRANSPARENT;
         }
 
         /*
-         * The public API always exposes already-composited RGBA frames. Even opaque VP8 frames are
-         * normalized to RGBA before composition so the animation canvas can remain a single format.
+         * The public API always exposes already-composited ARGB frames. Lossy, lossless and ALPH
+         * paths are normalized to packed non-premultiplied ARGB before composition so the canvas
+         * can stay in one format end-to-end.
          */
         ExtendedWebP.compositeFrame(
                 animationCanvas,
                 image.sourceWidth(),
                 image.sourceHeight(),
                 clearColor,
-                frameRgba,
+                frameArgb,
                 descriptor.x(),
                 descriptor.y(),
                 descriptor.width(),
                 descriptor.height(),
-                true,
                 descriptor.useAlphaBlending(),
                 previousFrameWidth,
                 previousFrameHeight,
@@ -284,30 +284,30 @@ public final class WebPImageReader implements AutoCloseable {
         previousFrameY = descriptor.y();
         disposeNextFrame = descriptor.disposeToBackground();
 
-        return PixelScaler.scaleRgba(animationCanvas, image.sourceWidth(), image.sourceHeight(), scalePlan);
+        return PixelScaler.scaleArgb(animationCanvas, image.sourceWidth(), image.sourceHeight(), scalePlan);
     }
 
-    private byte[] decodeFrameRgba(ParsedFrameDescriptor descriptor) throws WebPException {
+    private int[] decodeFrameArgb(ParsedFrameDescriptor descriptor) throws WebPException {
         if (descriptor.lossless()) {
-            byte[] rgba = new byte[descriptor.width() * descriptor.height() * 4];
-            new LosslessDecoder(descriptor.imageChunk()).decodeFrame(descriptor.width(), descriptor.height(), false, rgba);
-            return rgba;
+            int[] argb = new int[descriptor.width() * descriptor.height()];
+            new LosslessDecoder(descriptor.imageChunk()).decodeFrame(descriptor.width(), descriptor.height(), false, argb);
+            return argb;
         }
 
-        byte[] rgba = Vp8Decoder.decodeRgba(new ByteArrayInputStream(descriptor.imageChunk()), false);
+        int[] argb = Vp8Decoder.decodeArgb(new ByteArrayInputStream(descriptor.imageChunk()), false);
         if (descriptor.alphaChunk() != null) {
             ExtendedWebP.AlphaChunk alphaChunk = ExtendedWebP.parseAlphaChunk(
                     descriptor.alphaChunk(),
                     descriptor.width(),
                     descriptor.height()
             );
-            applyAlphaChunk(rgba, descriptor.width(), descriptor.height(), alphaChunk);
+            applyAlphaChunk(argb, descriptor.width(), descriptor.height(), alphaChunk);
         }
-        return rgba;
+        return argb;
     }
 
     private static void applyAlphaChunk(
-            byte[] rgba,
+            int[] argb,
             int width,
             int height,
             ExtendedWebP.AlphaChunk alphaChunk
@@ -321,9 +321,12 @@ public final class WebPImageReader implements AutoCloseable {
                         y,
                         width,
                         alphaChunk.filteringMethod(),
-                        rgba
+                        argb
                 );
-                rgba[pixelIndex * 4 + 3] = (byte) (((alphaData[pixelIndex] & 0xFF) + predictor) & 0xFF);
+                argb[pixelIndex] = org.glavo.javafx.webp.internal.Argb.withAlpha(
+                        argb[pixelIndex],
+                        ((alphaData[pixelIndex] & 0xFF) + predictor) & 0xFF
+                );
             }
         }
     }

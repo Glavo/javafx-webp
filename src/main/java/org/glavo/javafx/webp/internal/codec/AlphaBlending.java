@@ -15,32 +15,40 @@
  */
 package org.glavo.javafx.webp.internal.codec;
 
+import org.glavo.javafx.webp.internal.Argb;
+
 /// Integer alpha blending helpers based on the WebP animation reference implementation.
 public final class AlphaBlending {
 
     private AlphaBlending() {
     }
 
-    /// Blends a single non-premultiplied RGBA source pixel over a destination pixel.
+    /// Blends a single non-premultiplied `ARGB` source pixel over a destination pixel.
     ///
-    /// @param src the source RGBA pixel
-    /// @param dst the destination RGBA pixel
-    /// @return the blended non-premultiplied RGBA pixel
-    public static byte[] blend(byte[] src, byte[] dst) {
-        int srcA = src[3] & 0xFF;
+    /// @param src the source `ARGB` pixel
+    /// @param dst the destination `ARGB` pixel
+    /// @return the blended non-premultiplied `ARGB` pixel
+    public static int blend(int src, int dst) {
+        int srcA = Argb.alpha(src);
         if (srcA == 0) {
-            return dst.clone();
+            return dst;
+        }
+        if (srcA == 0xFF) {
+            return src;
         }
 
-        int dstA = dst[3] & 0xFF;
+        int dstA = Argb.alpha(dst);
+        if (dstA == 0) {
+            return src;
+        }
         int dstFactorA = divBy255(dstA * (255 - srcA));
         int blendA = srcA + dstFactorA;
         int scale = (1 << 24) / blendA;
 
-        int r = blendChannel(src[0] & 0xFF, srcA, dst[0] & 0xFF, dstFactorA, scale);
-        int g = blendChannel(src[1] & 0xFF, srcA, dst[1] & 0xFF, dstFactorA, scale);
-        int b = blendChannel(src[2] & 0xFF, srcA, dst[2] & 0xFF, dstFactorA, scale);
-        return new byte[]{(byte) r, (byte) g, (byte) b, (byte) blendA};
+        int r = blendChannel(Argb.red(src), srcA, Argb.red(dst), dstFactorA, scale);
+        int g = blendChannel(Argb.green(src), srcA, Argb.green(dst), dstFactorA, scale);
+        int b = blendChannel(Argb.blue(src), srcA, Argb.blue(dst), dstFactorA, scale);
+        return Argb.pack(blendA, r, g, b);
     }
 
     private static int blendChannel(int src, int srcA, int dst, int dstA, int scale) {

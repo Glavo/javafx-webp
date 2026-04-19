@@ -18,7 +18,6 @@ package org.glavo.javafx.webp;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayInputStream;
-import java.nio.ByteBuffer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -75,27 +74,21 @@ final class ImageWebpDecoderPortedTest {
         assertEquals(width, frame.getWidth());
         assertEquals(height, frame.getHeight());
 
-        byte[] pixels = readPixels(frame);
-        assertEquals(width * height * 4, pixels.length);
+        int[] pixels = frame.getArgbArray();
+        assertEquals(width * height, pixels.length);
 
-        int r = pixels[0] & 0xFF;
-        int g = pixels[1] & 0xFF;
-        int b = pixels[2] & 0xFF;
-        int a = pixels[3] & 0xFF;
+        int r = (pixels[0] >>> 16) & 0xFF;
+        int g = (pixels[0] >>> 8) & 0xFF;
+        int b = pixels[0] & 0xFF;
+        int a = pixels[0] >>> 24;
         assertEquals(0xFF, a);
 
-        for (int i = 0; i < pixels.length; i += 4) {
-            assertEquals(r, pixels[i] & 0xFF, "red channel at pixel " + (i / 4));
-            assertEquals(g, pixels[i + 1] & 0xFF, "green channel at pixel " + (i / 4));
-            assertEquals(b, pixels[i + 2] & 0xFF, "blue channel at pixel " + (i / 4));
-            assertEquals(a, pixels[i + 3] & 0xFF, "alpha channel at pixel " + (i / 4));
+        for (int i = 0; i < pixels.length; i++) {
+            int argb = pixels[i];
+            assertEquals(r, (argb >>> 16) & 0xFF, "red channel at pixel " + i);
+            assertEquals(g, (argb >>> 8) & 0xFF, "green channel at pixel " + i);
+            assertEquals(b, argb & 0xFF, "blue channel at pixel " + i);
+            assertEquals(a, argb >>> 24, "alpha channel at pixel " + i);
         }
-    }
-
-    private static byte[] readPixels(WebPFrame frame) {
-        ByteBuffer pixels = frame.getPixels();
-        byte[] bytes = new byte[pixels.remaining()];
-        pixels.get(bytes);
-        return bytes;
     }
 }

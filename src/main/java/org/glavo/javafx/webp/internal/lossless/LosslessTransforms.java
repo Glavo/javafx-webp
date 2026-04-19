@@ -15,6 +15,8 @@
  */
 package org.glavo.javafx.webp.internal.lossless;
 
+import org.glavo.javafx.webp.internal.Argb;
+
 /// Reverse transforms for VP8L decoded pixels.
 public final class LosslessTransforms {
 
@@ -37,21 +39,21 @@ public final class LosslessTransforms {
     public static final class Transform {
         final int kind;
         final int sizeBits;
-        final byte[] data;
+        final int[] data;
         final int tableSize;
 
-        private Transform(int kind, int sizeBits, byte[] data, int tableSize) {
+        private Transform(int kind, int sizeBits, int[] data, int tableSize) {
             this.kind = kind;
             this.sizeBits = sizeBits;
             this.data = data;
             this.tableSize = tableSize;
         }
 
-        public static Transform predictor(int sizeBits, byte[] data) {
+        public static Transform predictor(int sizeBits, int[] data) {
             return new Transform(PREDICTOR, sizeBits, data, 0);
         }
 
-        public static Transform color(int sizeBits, byte[] data) {
+        public static Transform color(int sizeBits, int[] data) {
             return new Transform(COLOR, sizeBits, data, 0);
         }
 
@@ -59,7 +61,7 @@ public final class LosslessTransforms {
             return new Transform(SUBTRACT_GREEN, 0, null, 0);
         }
 
-        public static Transform colorIndexing(int tableSize, byte[] data) {
+        public static Transform colorIndexing(int tableSize, int[] data) {
             return new Transform(COLOR_INDEXING, 0, data, tableSize);
         }
     }
@@ -74,24 +76,22 @@ public final class LosslessTransforms {
     }
 
     /// Applies the predictor transform.
-    public static void applyPredictorTransform(byte[] imageData, int width, int height, int sizeBits, byte[] predictorData) {
+    public static void applyPredictorTransform(int[] imageData, int width, int height, int sizeBits, int[] predictorData) {
         int blockXSize = subsampleSize(width, sizeBits);
-        imageData[3] = (byte) ((imageData[3] + 255) & 0xFF);
-        applyPredictorTransform1(imageData, 4, width * 4, width);
+        imageData[0] = Argb.add(imageData[0], 0xFF00_0000);
+        applyPredictorTransform1(imageData, 1, width, width);
 
         for (int y = 1; y < height; y++) {
-            for (int channel = 0; channel < 4; channel++) {
-                int index = y * width * 4 + channel;
-                imageData[index] = (byte) ((imageData[index] + imageData[(y - 1) * width * 4 + channel]) & 0xFF);
-            }
+            int rowStart = y * width;
+            imageData[rowStart] = Argb.add(imageData[rowStart], imageData[rowStart - width]);
         }
 
         for (int y = 1; y < height; y++) {
             for (int blockX = 0; blockX < blockXSize; blockX++) {
                 int blockIndex = (y >> sizeBits) * blockXSize + blockX;
-                int predictor = predictorData[blockIndex * 4 + 1] & 0xFF;
-                int startIndex = (y * width + Math.max(blockX << sizeBits, 1)) * 4;
-                int endIndex = (y * width + Math.min((blockX + 1) << sizeBits, width)) * 4;
+                int predictor = Argb.green(predictorData[blockIndex]);
+                int startIndex = y * width + Math.max(blockX << sizeBits, 1);
+                int endIndex = y * width + Math.min((blockX + 1) << sizeBits, width);
 
                 switch (predictor) {
                     case 0 -> applyPredictorTransform0(imageData, startIndex, endIndex);
@@ -116,49 +116,52 @@ public final class LosslessTransforms {
     }
 
     /// Applies the color transform.
-    public static void applyColorTransform(byte[] imageData, int width, int sizeBits, byte[] transformData) {
+    public static void applyColorTransform(int[] imageData, int width, int sizeBits, int[] transformData) {
         int blockXSize = subsampleSize(width, sizeBits);
-        for (int y = 0; y < imageData.length / (width * 4); y++) {
-            int rowTransformStart = (y >> sizeBits) * blockXSize * 4;
+        for (int y = 0; y < imageData.length / width; y++) {
+            int rowTransformStart = (y >> sizeBits) * blockXSize;
             for (int block = 0; block < blockXSize; block++) {
-                int transformIndex = rowTransformStart + block * 4;
-                int redToBlue = transformData[transformIndex] & 0xFF;
-                int greenToBlue = transformData[transformIndex + 1] & 0xFF;
-                int greenToRed = transformData[transformIndex + 2] & 0xFF;
+                int transform = transformData[rowTransformStart + block];
+                int redToBlue = Argb.red(transform);
+                int greenToBlue = Argb.green(transform);
+                int greenToRed = Argb.blue(transform);
 
-                int pixelStart = (y * width + (block << sizeBits)) * 4;
-                int pixelEnd = Math.min((y * width + ((block + 1) << sizeBits)) * 4, (y + 1) * width * 4);
-                for (int pixel = pixelStart; pixel < pixelEnd; pixel += 4) {
-                    int green = imageData[pixel + 1] & 0xFF;
-                    int red = (imageData[pixel] & 0xFF) + colorTransformDelta((byte) greenToRed, (byte) green);
-                    int blue = (imageData[pixel + 2] & 0xFF)
+                int pixelStart = y * width + (block << sizeBits);
+                int pixelEnd = Math.min(y * width + ((block + 1) << sizeBits), (y + 1) * width);
+                for (int pixel = pixelStart; pixel < pixelEnd; pixel++) {
+                    int value = imageData[pixel];
+                    int green = Argb.green(value);
+                    int red = Argb.red(value) + colorTransformDelta((byte) greenToRed, (byte) green);
+                    int blue = Argb.blue(value)
                             + colorTransformDelta((byte) greenToBlue, (byte) green)
                             + colorTransformDelta((byte) redToBlue, (byte) red);
-                    imageData[pixel] = (byte) red;
-                    imageData[pixel + 2] = (byte) blue;
+                    imageData[pixel] = Argb.pack(Argb.alpha(value), red, green, blue);
                 }
             }
         }
     }
 
     /// Applies the subtract-green transform.
-    public static void applySubtractGreenTransform(byte[] imageData) {
-        for (int index = 0; index < imageData.length; index += 4) {
-            imageData[index] = (byte) ((imageData[index] + imageData[index + 1]) & 0xFF);
-            imageData[index + 2] = (byte) ((imageData[index + 2] + imageData[index + 1]) & 0xFF);
+    public static void applySubtractGreenTransform(int[] imageData) {
+        for (int index = 0; index < imageData.length; index++) {
+            int value = imageData[index];
+            int green = Argb.green(value);
+            imageData[index] = Argb.pack(
+                    Argb.alpha(value),
+                    Argb.red(value) + green,
+                    green,
+                    Argb.blue(value) + green
+            );
         }
     }
 
     /// Applies the color indexing transform.
-    public static void applyColorIndexingTransform(byte[] imageData, int width, int height, int tableSize, byte[] tableData) {
+    public static void applyColorIndexingTransform(int[] imageData, int width, int height, int tableSize, int[] tableData) {
         if (tableSize > 16) {
-            byte[][] table = new byte[256][4];
-            for (int i = 0; i < tableSize; i++) {
-                System.arraycopy(tableData, i * 4, table[i], 0, 4);
-            }
-            for (int index = 0; index < imageData.length; index += 4) {
-                int tableIndex = imageData[index + 1] & 0xFF;
-                System.arraycopy(table[tableIndex], 0, imageData, index, 4);
+            int[] table = new int[256];
+            System.arraycopy(tableData, 0, table, 0, tableSize);
+            for (int index = 0; index < imageData.length; index++) {
+                imageData[index] = table[Argb.green(imageData[index])];
             }
             return;
         }
@@ -168,208 +171,170 @@ public final class LosslessTransforms {
         int bitsPerEntry = 8 / pixelsPerPackedByte;
         int mask = (1 << bitsPerEntry) - 1;
         int packedImageWidth = (width + pixelsPerPackedByte - 1) / pixelsPerPackedByte;
-        byte[] packedIndices = new byte[packedImageWidth];
+        int[] packedIndices = new int[packedImageWidth];
 
         for (int y = height - 1; y >= 0; y--) {
-            int packedOffset = y * packedImageWidth * 4;
+            int packedOffset = y * packedImageWidth;
             for (int block = 0; block < packedImageWidth; block++) {
-                packedIndices[block] = imageData[packedOffset + block * 4 + 1];
+                packedIndices[block] = Argb.green(imageData[packedOffset + block]);
             }
 
-            int outOffset = y * width * 4;
+            int outOffset = y * width;
             for (int block = 0; block < packedImageWidth; block++) {
-                int packed = packedIndices[block] & 0xFF;
+                int packed = packedIndices[block];
                 for (int pixel = 0; pixel < pixelsPerPackedByte; pixel++) {
                     int x = block * pixelsPerPackedByte + pixel;
                     if (x >= width) {
                         break;
                     }
                     int tableIndex = (packed >> (pixel * bitsPerEntry)) & mask;
-                    int dst = outOffset + x * 4;
                     if (tableIndex < tableSize) {
-                        System.arraycopy(tableData, tableIndex * 4, imageData, dst, 4);
+                        imageData[outOffset + x] = tableData[tableIndex];
                     } else {
-                        imageData[dst] = 0;
-                        imageData[dst + 1] = 0;
-                        imageData[dst + 2] = 0;
-                        imageData[dst + 3] = 0;
+                        imageData[outOffset + x] = 0;
                     }
                 }
             }
         }
     }
 
-    private static void applyPredictorTransform0(byte[] imageData, int start, int end) {
-        for (int i = start + 3; i < end; i += 4) {
-            imageData[i] = (byte) ((imageData[i] + 0xFF) & 0xFF);
-        }
-    }
-
-    private static void applyPredictorTransform1(byte[] imageData, int start, int end, int width) {
+    private static void applyPredictorTransform0(int[] imageData, int start, int end) {
         for (int i = start; i < end; i++) {
-            imageData[i] = (byte) ((imageData[i] + imageData[i - 4]) & 0xFF);
+            imageData[i] = Argb.add(imageData[i], 0xFF00_0000);
         }
     }
 
-    private static void applyPredictorTransform2(byte[] imageData, int start, int end, int width) {
-        int stride = width * 4;
+    private static void applyPredictorTransform1(int[] imageData, int start, int end, int width) {
         for (int i = start; i < end; i++) {
-            imageData[i] = (byte) ((imageData[i] + imageData[i - stride]) & 0xFF);
+            imageData[i] = Argb.add(imageData[i], imageData[i - 1]);
         }
     }
 
-    private static void applyPredictorTransform3(byte[] imageData, int start, int end, int width) {
-        int stride = width * 4;
+    private static void applyPredictorTransform2(int[] imageData, int start, int end, int width) {
         for (int i = start; i < end; i++) {
-            imageData[i] = (byte) ((imageData[i] + imageData[i - stride + 4]) & 0xFF);
+            imageData[i] = Argb.add(imageData[i], imageData[i - width]);
         }
     }
 
-    private static void applyPredictorTransform4(byte[] imageData, int start, int end, int width) {
-        int stride = width * 4;
+    private static void applyPredictorTransform3(int[] imageData, int start, int end, int width) {
         for (int i = start; i < end; i++) {
-            imageData[i] = (byte) ((imageData[i] + imageData[i - stride - 4]) & 0xFF);
+            imageData[i] = Argb.add(imageData[i], imageData[i - width + 1]);
         }
     }
 
-    private static void applyPredictorTransform5(byte[] imageData, int start, int end, int width) {
-        int stride = width * 4;
-        byte[] prev = slice4(imageData, start - 4);
-        for (int i = start; i < end; i += 4) {
-            byte[] topRight = slice4(imageData, i - stride + 4);
-            byte[] top = slice4(imageData, i - stride);
-            prev = new byte[]{
-                    (byte) ((imageData[i] + average2(average2(prev[0] & 0xFF, topRight[0] & 0xFF), top[0] & 0xFF)) & 0xFF),
-                    (byte) ((imageData[i + 1] + average2(average2(prev[1] & 0xFF, topRight[1] & 0xFF), top[1] & 0xFF)) & 0xFF),
-                    (byte) ((imageData[i + 2] + average2(average2(prev[2] & 0xFF, topRight[2] & 0xFF), top[2] & 0xFF)) & 0xFF),
-                    (byte) ((imageData[i + 3] + average2(average2(prev[3] & 0xFF, topRight[3] & 0xFF), top[3] & 0xFF)) & 0xFF)
-            };
-            System.arraycopy(prev, 0, imageData, i, 4);
-        }
-    }
-
-    private static void applyPredictorTransform6(byte[] imageData, int start, int end, int width) {
-        int stride = width * 4;
+    private static void applyPredictorTransform4(int[] imageData, int start, int end, int width) {
         for (int i = start; i < end; i++) {
-            imageData[i] = (byte) ((imageData[i] + average2(imageData[i - 4] & 0xFF, imageData[i - stride - 4] & 0xFF)) & 0xFF);
+            imageData[i] = Argb.add(imageData[i], imageData[i - width - 1]);
         }
     }
 
-    private static void applyPredictorTransform7(byte[] imageData, int start, int end, int width) {
-        int stride = width * 4;
-        byte[] prev = slice4(imageData, start - 4);
-        for (int i = start; i < end; i += 4) {
-            byte[] top = slice4(imageData, i - stride);
-            prev = new byte[]{
-                    (byte) ((imageData[i] + average2(prev[0] & 0xFF, top[0] & 0xFF)) & 0xFF),
-                    (byte) ((imageData[i + 1] + average2(prev[1] & 0xFF, top[1] & 0xFF)) & 0xFF),
-                    (byte) ((imageData[i + 2] + average2(prev[2] & 0xFF, top[2] & 0xFF)) & 0xFF),
-                    (byte) ((imageData[i + 3] + average2(prev[3] & 0xFF, top[3] & 0xFF)) & 0xFF)
-            };
-            System.arraycopy(prev, 0, imageData, i, 4);
-        }
-    }
-
-    private static void applyPredictorTransform8(byte[] imageData, int start, int end, int width) {
-        int stride = width * 4;
+    private static void applyPredictorTransform5(int[] imageData, int start, int end, int width) {
+        int prev = imageData[start - 1];
         for (int i = start; i < end; i++) {
-            imageData[i] = (byte) ((imageData[i] + average2(imageData[i - stride - 4] & 0xFF, imageData[i - stride] & 0xFF)) & 0xFF);
+            int topRight = imageData[i - width + 1];
+            int top = imageData[i - width];
+            prev = Argb.add(imageData[i], Argb.average2(Argb.average2(prev, topRight), top));
+            imageData[i] = prev;
         }
     }
 
-    private static void applyPredictorTransform9(byte[] imageData, int start, int end, int width) {
-        int stride = width * 4;
+    private static void applyPredictorTransform6(int[] imageData, int start, int end, int width) {
         for (int i = start; i < end; i++) {
-            imageData[i] = (byte) ((imageData[i] + average2(imageData[i - stride] & 0xFF, imageData[i - stride + 4] & 0xFF)) & 0xFF);
+            imageData[i] = Argb.add(imageData[i], Argb.average2(imageData[i - 1], imageData[i - width - 1]));
         }
     }
 
-    private static void applyPredictorTransform10(byte[] imageData, int start, int end, int width) {
-        int stride = width * 4;
-        byte[] prev = slice4(imageData, start - 4);
-        for (int i = start; i < end; i += 4) {
-            byte[] topLeft = slice4(imageData, i - stride - 4);
-            byte[] top = slice4(imageData, i - stride);
-            byte[] topRight = slice4(imageData, i - stride + 4);
-            prev = new byte[]{
-                    (byte) ((imageData[i] + average2(average2(prev[0] & 0xFF, topLeft[0] & 0xFF), average2(top[0] & 0xFF, topRight[0] & 0xFF))) & 0xFF),
-                    (byte) ((imageData[i + 1] + average2(average2(prev[1] & 0xFF, topLeft[1] & 0xFF), average2(top[1] & 0xFF, topRight[1] & 0xFF))) & 0xFF),
-                    (byte) ((imageData[i + 2] + average2(average2(prev[2] & 0xFF, topLeft[2] & 0xFF), average2(top[2] & 0xFF, topRight[2] & 0xFF))) & 0xFF),
-                    (byte) ((imageData[i + 3] + average2(average2(prev[3] & 0xFF, topLeft[3] & 0xFF), average2(top[3] & 0xFF, topRight[3] & 0xFF))) & 0xFF)
-            };
-            System.arraycopy(prev, 0, imageData, i, 4);
+    private static void applyPredictorTransform7(int[] imageData, int start, int end, int width) {
+        int prev = imageData[start - 1];
+        for (int i = start; i < end; i++) {
+            int top = imageData[i - width];
+            prev = Argb.add(imageData[i], Argb.average2(prev, top));
+            imageData[i] = prev;
         }
     }
 
-    private static void applyPredictorTransform11(byte[] imageData, int start, int end, int width) {
-        int stride = width * 4;
-        int[] left = toInt4(slice4(imageData, start - 4));
-        int[] topLeft = toInt4(slice4(imageData, start - stride - 4));
-        for (int i = start; i < end; i += 4) {
-            int[] top = toInt4(slice4(imageData, i - stride));
+    private static void applyPredictorTransform8(int[] imageData, int start, int end, int width) {
+        for (int i = start; i < end; i++) {
+            imageData[i] = Argb.add(imageData[i], Argb.average2(imageData[i - width - 1], imageData[i - width]));
+        }
+    }
+
+    private static void applyPredictorTransform9(int[] imageData, int start, int end, int width) {
+        for (int i = start; i < end; i++) {
+            imageData[i] = Argb.add(imageData[i], Argb.average2(imageData[i - width], imageData[i - width + 1]));
+        }
+    }
+
+    private static void applyPredictorTransform10(int[] imageData, int start, int end, int width) {
+        int prev = imageData[start - 1];
+        for (int i = start; i < end; i++) {
+            int topLeft = imageData[i - width - 1];
+            int top = imageData[i - width];
+            int topRight = imageData[i - width + 1];
+            prev = Argb.add(imageData[i], Argb.average2(Argb.average2(prev, topLeft), Argb.average2(top, topRight)));
+            imageData[i] = prev;
+        }
+    }
+
+    private static void applyPredictorTransform11(int[] imageData, int start, int end, int width) {
+        int left = imageData[start - 1];
+        int topLeft = imageData[start - width - 1];
+        for (int i = start; i < end; i++) {
+            int top = imageData[i - width];
             int predictLeft = 0;
             int predictTop = 0;
-            for (int c = 0; c < 4; c++) {
-                int predict = left[c] + top[c] - topLeft[c];
-                predictLeft += Math.abs(predict - left[c]);
-                predictTop += Math.abs(predict - top[c]);
-            }
-            if (predictLeft < predictTop) {
-                for (int c = 0; c < 4; c++) {
-                    imageData[i + c] = (byte) ((imageData[i + c] + left[c]) & 0xFF);
-                }
-            } else {
-                for (int c = 0; c < 4; c++) {
-                    imageData[i + c] = (byte) ((imageData[i + c] + top[c]) & 0xFF);
-                }
-            }
+            predictLeft += Math.abs((Argb.red(left) + Argb.red(top) - Argb.red(topLeft)) - Argb.red(left));
+            predictLeft += Math.abs((Argb.green(left) + Argb.green(top) - Argb.green(topLeft)) - Argb.green(left));
+            predictLeft += Math.abs((Argb.blue(left) + Argb.blue(top) - Argb.blue(topLeft)) - Argb.blue(left));
+            predictLeft += Math.abs((Argb.alpha(left) + Argb.alpha(top) - Argb.alpha(topLeft)) - Argb.alpha(left));
+            predictTop += Math.abs((Argb.red(left) + Argb.red(top) - Argb.red(topLeft)) - Argb.red(top));
+            predictTop += Math.abs((Argb.green(left) + Argb.green(top) - Argb.green(topLeft)) - Argb.green(top));
+            predictTop += Math.abs((Argb.blue(left) + Argb.blue(top) - Argb.blue(topLeft)) - Argb.blue(top));
+            predictTop += Math.abs((Argb.alpha(left) + Argb.alpha(top) - Argb.alpha(topLeft)) - Argb.alpha(top));
+
+            int predictor = predictLeft < predictTop ? left : top;
+            imageData[i] = Argb.add(imageData[i], predictor);
             topLeft = top;
-            left = toInt4(slice4(imageData, i));
+            left = imageData[i];
         }
     }
 
-    private static void applyPredictorTransform12(byte[] imageData, int start, int end, int width) {
-        int stride = width * 4;
-        byte[] prev = slice4(imageData, start - 4);
-        for (int i = start; i < end; i += 4) {
-            byte[] topLeft = slice4(imageData, i - stride - 4);
-            byte[] top = slice4(imageData, i - stride);
-            prev = new byte[]{
-                    (byte) ((imageData[i] + clampAddSubtractFull(prev[0] & 0xFF, top[0] & 0xFF, topLeft[0] & 0xFF)) & 0xFF),
-                    (byte) ((imageData[i + 1] + clampAddSubtractFull(prev[1] & 0xFF, top[1] & 0xFF, topLeft[1] & 0xFF)) & 0xFF),
-                    (byte) ((imageData[i + 2] + clampAddSubtractFull(prev[2] & 0xFF, top[2] & 0xFF, topLeft[2] & 0xFF)) & 0xFF),
-                    (byte) ((imageData[i + 3] + clampAddSubtractFull(prev[3] & 0xFF, top[3] & 0xFF, topLeft[3] & 0xFF)) & 0xFF)
-            };
-            System.arraycopy(prev, 0, imageData, i, 4);
+    private static void applyPredictorTransform12(int[] imageData, int start, int end, int width) {
+        int prev = imageData[start - 1];
+        for (int i = start; i < end; i++) {
+            int topLeft = imageData[i - width - 1];
+            int top = imageData[i - width];
+            prev = Argb.add(imageData[i], clampAddSubtractFullPixel(prev, top, topLeft));
+            imageData[i] = prev;
         }
     }
 
-    private static void applyPredictorTransform13(byte[] imageData, int start, int end, int width) {
-        int stride = width * 4;
-        byte[] prev = slice4(imageData, start - 4);
-        for (int i = start; i < end; i += 4) {
-            byte[] topLeft = slice4(imageData, i - stride - 4);
-            byte[] top = slice4(imageData, i - stride);
-            prev = new byte[]{
-                    (byte) ((imageData[i] + clampAddSubtractHalf(((prev[0] & 0xFF) + (top[0] & 0xFF)) / 2, topLeft[0] & 0xFF)) & 0xFF),
-                    (byte) ((imageData[i + 1] + clampAddSubtractHalf(((prev[1] & 0xFF) + (top[1] & 0xFF)) / 2, topLeft[1] & 0xFF)) & 0xFF),
-                    (byte) ((imageData[i + 2] + clampAddSubtractHalf(((prev[2] & 0xFF) + (top[2] & 0xFF)) / 2, topLeft[2] & 0xFF)) & 0xFF),
-                    (byte) ((imageData[i + 3] + clampAddSubtractHalf(((prev[3] & 0xFF) + (top[3] & 0xFF)) / 2, topLeft[3] & 0xFF)) & 0xFF)
-            };
-            System.arraycopy(prev, 0, imageData, i, 4);
+    private static void applyPredictorTransform13(int[] imageData, int start, int end, int width) {
+        int prev = imageData[start - 1];
+        for (int i = start; i < end; i++) {
+            int topLeft = imageData[i - width - 1];
+            int top = imageData[i - width];
+            prev = Argb.add(imageData[i], clampAddSubtractHalfPixel(Argb.average2(prev, top), topLeft));
+            imageData[i] = prev;
         }
     }
 
-    private static byte[] slice4(byte[] data, int offset) {
-        return new byte[]{data[offset], data[offset + 1], data[offset + 2], data[offset + 3]};
+    private static int clampAddSubtractFullPixel(int left, int top, int topLeft) {
+        return Argb.pack(
+                clampAddSubtractFull(Argb.alpha(left), Argb.alpha(top), Argb.alpha(topLeft)),
+                clampAddSubtractFull(Argb.red(left), Argb.red(top), Argb.red(topLeft)),
+                clampAddSubtractFull(Argb.green(left), Argb.green(top), Argb.green(topLeft)),
+                clampAddSubtractFull(Argb.blue(left), Argb.blue(top), Argb.blue(topLeft))
+        );
     }
 
-    private static int[] toInt4(byte[] data) {
-        return new int[]{data[0] & 0xFF, data[1] & 0xFF, data[2] & 0xFF, data[3] & 0xFF};
-    }
-
-    private static int average2(int a, int b) {
-        return (a + b) / 2;
+    private static int clampAddSubtractHalfPixel(int averaged, int topLeft) {
+        return Argb.pack(
+                clampAddSubtractHalf(Argb.alpha(averaged), Argb.alpha(topLeft)),
+                clampAddSubtractHalf(Argb.red(averaged), Argb.red(topLeft)),
+                clampAddSubtractHalf(Argb.green(averaged), Argb.green(topLeft)),
+                clampAddSubtractHalf(Argb.blue(averaged), Argb.blue(topLeft))
+        );
     }
 
     private static int clampAddSubtractFull(int a, int b, int c) {

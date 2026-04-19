@@ -18,9 +18,9 @@ package org.glavo.javafx.webp;
 import javafx.scene.image.WritableImage;
 import org.glavo.javafx.webp.internal.FxImages;
 
-import java.nio.ByteBuffer;
+import java.nio.IntBuffer;
 
-/// A decoded frame represented as tightly packed non-premultiplied RGBA pixels.
+/// A decoded frame represented as tightly packed non-premultiplied `ARGB` pixels.
 ///
 /// For static images the library returns a single frame with a duration of `0`. For
 /// animated images each frame already represents the fully composited canvas for the corresponding
@@ -29,22 +29,22 @@ public final class WebPFrame {
 
     private final int width;
     private final int height;
-    private final int stride;
+    private final int scanlineStride;
     private final int durationMillis;
-    private final byte[] pixels;
+    private final int[] argbPixels;
 
-    /// Creates a frame from decoded RGBA pixels.
+    /// Creates a frame from decoded `ARGB` pixels.
     ///
     /// @param width the frame width in pixels
     /// @param height the frame height in pixels
     /// @param durationMillis the display duration in milliseconds, or `0` for still images
-    /// @param pixels tightly packed non-premultiplied RGBA pixels
-    public WebPFrame(int width, int height, int durationMillis, byte[] pixels) {
+    /// @param argbPixels tightly packed non-premultiplied `ARGB` pixels stored as `0xAARRGGBB`
+    public WebPFrame(int width, int height, int durationMillis, int[] argbPixels) {
         this.width = width;
         this.height = height;
-        this.stride = width * 4;
+        this.scanlineStride = width;
         this.durationMillis = durationMillis;
-        this.pixels = pixels.clone();
+        this.argbPixels = argbPixels.clone();
     }
 
     /// Returns the frame width.
@@ -61,14 +61,14 @@ public final class WebPFrame {
         return height;
     }
 
-    /// Returns the number of bytes between two adjacent rows.
+    /// Returns the number of packed pixels between two adjacent rows.
     ///
-    /// The library always stores pixels as tightly packed RGBA data, so the stride is always
-    /// `width * 4`.
+    /// The library always stores pixels as tightly packed `ARGB` integers, so the scanline stride
+    /// is always equal to `width`.
     ///
-    /// @return the byte stride of the frame
-    public int getStride() {
-        return stride;
+    /// @return the scanline stride in `int` pixels
+    public int getScanlineStride() {
+        return scanlineStride;
     }
 
     /// Returns the frame duration in milliseconds.
@@ -78,22 +78,30 @@ public final class WebPFrame {
         return durationMillis;
     }
 
-    /// Returns a read-only view of the underlying RGBA pixel buffer.
+    /// Returns a read-only view of the underlying `ARGB` pixel buffer.
     ///
     /// Each invocation returns a fresh view whose position is set to `0`. The returned
     /// buffer is safe to share, but mutating it is not allowed.
     ///
-    /// @return a read-only RGBA pixel buffer
-    public ByteBuffer getPixels() {
-        return ByteBuffer.wrap(pixels).asReadOnlyBuffer();
+    /// @return a read-only `ARGB` pixel buffer
+    public IntBuffer getArgbPixels() {
+        return IntBuffer.wrap(argbPixels).asReadOnlyBuffer();
+    }
+
+    /// Returns a defensive copy of the packed `ARGB` pixels.
+    ///
+    /// @return a newly allocated `ARGB` array
+    public int[] getArgbArray() {
+        return argbPixels.clone();
     }
 
     /// Creates a JavaFX [WritableImage] from this frame.
     ///
-    /// The conversion premultiplies alpha as required by JavaFX's writable pixel formats.
+    /// The packed `ARGB` integers can be written directly through JavaFX's
+    /// `PixelFormat.getIntArgbInstance()` format without any channel swizzle or premultiplication.
     ///
     /// @return a newly allocated JavaFX image
     public WritableImage toWritableImage() {
-        return FxImages.toWritableImage(width, height, pixels);
+        return FxImages.toWritableImage(width, height, argbPixels);
     }
 }

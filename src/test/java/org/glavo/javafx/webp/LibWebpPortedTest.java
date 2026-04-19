@@ -17,12 +17,12 @@ package org.glavo.javafx.webp;
 
 import javafx.scene.image.Image;
 import javafx.scene.image.PixelReader;
+import org.glavo.javafx.webp.internal.Argb;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -56,7 +56,7 @@ final class LibWebpPortedTest {
     @Test
     void decodesLibWebpExampleAgainstReferencePng() throws Exception {
         WebPImage image = WebPDecoder.decodeAll(resource(LIBWEBP_EXAMPLE_WEBP));
-        ReferenceImage expected = readPngAsRgba(LIBWEBP_EXAMPLE_PNG);
+        ReferenceImage expected = readPngAsArgb(LIBWEBP_EXAMPLE_PNG);
 
         assertEquals(1, image.getFrames().size());
         assertFalse(image.isAnimated());
@@ -120,7 +120,7 @@ final class LibWebpPortedTest {
             assertEquals(eager.getWidth(), streaming.getWidth());
             assertEquals(eager.getHeight(), streaming.getHeight());
             assertEquals(eager.getFrames().size(), streaming.getFrames().size());
-            assertFrameSamplesClose(streaming.getFrames().get(0), readPixels(eager.getFrames().get(0)), 0);
+        assertFrameSamplesClose(streaming.getFrames().get(0), readPixels(eager.getFrames().get(0)), 0);
         }
     }
 
@@ -238,9 +238,9 @@ final class LibWebpPortedTest {
         assertFrameSamplesClose(frame, expected.pixels(), maxChannelDelta);
     }
 
-    private static void assertFrameSamplesClose(WebPFrame frame, byte[] expectedRgba, int maxChannelDelta) {
-        byte[] actual = readPixels(frame);
-        assertEquals(expectedRgba.length, actual.length, "pixel buffer size");
+    private static void assertFrameSamplesClose(WebPFrame frame, int[] expectedArgb, int maxChannelDelta) {
+        int[] actual = readPixels(frame);
+        assertEquals(expectedArgb.length, actual.length, "pixel buffer size");
 
         int width = frame.getWidth();
         int height = frame.getHeight();
@@ -249,10 +249,10 @@ final class LibWebpPortedTest {
 
         for (int y : ys) {
             for (int x : xs) {
-                int pixelOffset = (y * width + x) * 4;
+                int pixelIndex = y * width + x;
                 for (int channel = 0; channel < 4; channel++) {
-                    int expectedValue = visibleChannelValue(expectedRgba, pixelOffset, channel);
-                    int actualValue = visibleChannelValue(actual, pixelOffset, channel);
+                    int expectedValue = visibleChannelValue(expectedArgb[pixelIndex], channel);
+                    int actualValue = visibleChannelValue(actual[pixelIndex], channel);
                     int delta = Math.abs(expectedValue - actualValue);
                     if (delta > maxChannelDelta) {
                         fail("sample pixel mismatch at (" + x + ", " + y + "), channel " + channel
@@ -263,20 +263,24 @@ final class LibWebpPortedTest {
         }
     }
 
-    private static byte[] readPixels(WebPFrame frame) {
-        ByteBuffer pixels = frame.getPixels();
+    private static int[] readPixels(WebPFrame frame) {
+        int[] pixels = frame.getArgbArray();
         assertNotNull(pixels);
-        byte[] bytes = new byte[pixels.remaining()];
-        pixels.get(bytes);
-        return bytes;
+        return pixels;
     }
 
-    private static int visibleChannelValue(byte[] rgba, int pixelOffset, int channel) {
-        int alpha = rgba[pixelOffset + 3] & 0xFF;
+    private static int visibleChannelValue(int argb, int channel) {
+        int alpha = argb >>> 24;
         if (channel == 3) {
             return alpha;
         }
-        return (rgba[pixelOffset + channel] & 0xFF) * alpha / 255;
+        int value = switch (channel) {
+            case 0 -> Argb.red(argb);
+            case 1 -> Argb.green(argb);
+            case 2 -> Argb.blue(argb);
+            default -> throw new IllegalArgumentException("Invalid channel: " + channel);
+        };
+        return value * alpha / 255;
     }
 
     private static int[] sampleCoordinates(int size) {
@@ -289,7 +293,7 @@ final class LibWebpPortedTest {
         return new int[]{0, size / 4, size / 2, (size * 3) / 4, size - 1};
     }
 
-    private static ReferenceImage readPngAsRgba(String resourceName) throws IOException {
+    private static ReferenceImage readPngAsArgb(String resourceName) throws IOException {
         try (InputStream input = resource(resourceName)) {
             Image image = new Image(input);
             if (image.isError()) {
@@ -301,18 +305,13 @@ final class LibWebpPortedTest {
             if (pixelReader == null) {
                 throw new IOException("Reference PNG does not expose pixels: " + resourceName);
             }
-            byte[] rgba = new byte[width * height * 4];
+            int[] argb = new int[width * height];
             for (int y = 0; y < height; y++) {
                 for (int x = 0; x < width; x++) {
-                    int argb = pixelReader.getArgb(x, y);
-                    int index = (y * width + x) * 4;
-                    rgba[index] = (byte) ((argb >>> 16) & 0xFF);
-                    rgba[index + 1] = (byte) ((argb >>> 8) & 0xFF);
-                    rgba[index + 2] = (byte) (argb & 0xFF);
-                    rgba[index + 3] = (byte) ((argb >>> 24) & 0xFF);
+                    argb[y * width + x] = pixelReader.getArgb(x, y);
                 }
             }
-            return new ReferenceImage(width, height, rgba);
+            return new ReferenceImage(width, height, argb);
         }
     }
 
@@ -330,7 +329,7 @@ final class LibWebpPortedTest {
         return input;
     }
 
-    private record ReferenceImage(int width, int height, byte[] pixels) {
+    private record ReferenceImage(int width, int height, int[] pixels) {
     }
 
     private interface ThrowingRunnable {

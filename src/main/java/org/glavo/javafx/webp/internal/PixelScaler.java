@@ -15,24 +15,24 @@
  */
 package org.glavo.javafx.webp.internal;
 
-/// Pure byte-array RGBA scaling routines used by the decoder backend.
+/// Pure packed-`ARGB` scaling routines used by the decoder backend.
 ///
-/// The scaler operates on tightly packed non-premultiplied RGBA data and therefore avoids all
-/// desktop imaging APIs. The `smooth` path uses bilinear interpolation while the fast path
-/// uses nearest-neighbor sampling.
+/// The scaler operates on tightly packed non-premultiplied `ARGB` data and therefore avoids all
+/// desktop imaging APIs. The `smooth` path uses bilinear interpolation while the fast path uses
+/// nearest-neighbor sampling.
 public final class PixelScaler {
 
     private PixelScaler() {
     }
 
-    /// Scales an RGBA image according to the supplied plan.
+    /// Scales an `ARGB` image according to the supplied plan.
     ///
-    /// @param source the source RGBA pixels
+    /// @param source the source `ARGB` pixels
     /// @param sourceWidth the source width
     /// @param sourceHeight the source height
     /// @param scalePlan the scaling configuration
-    /// @return the scaled RGBA pixels, or a copy of the source if scaling is not required
-    public static byte[] scaleRgba(byte[] source, int sourceWidth, int sourceHeight, ScalePlan scalePlan) {
+    /// @return the scaled `ARGB` pixels, or a copy of the source if scaling is not required
+    public static int[] scaleArgb(int[] source, int sourceWidth, int sourceHeight, ScalePlan scalePlan) {
         if (sourceWidth == scalePlan.targetWidth() && sourceHeight == scalePlan.targetHeight()) {
             return source.clone();
         }
@@ -42,25 +42,20 @@ public final class PixelScaler {
                 : scaleNearest(source, sourceWidth, sourceHeight, scalePlan.targetWidth(), scalePlan.targetHeight());
     }
 
-    private static byte[] scaleNearest(byte[] source, int sourceWidth, int sourceHeight, int targetWidth, int targetHeight) {
-        byte[] scaled = new byte[targetWidth * targetHeight * 4];
+    private static int[] scaleNearest(int[] source, int sourceWidth, int sourceHeight, int targetWidth, int targetHeight) {
+        int[] scaled = new int[targetWidth * targetHeight];
         for (int y = 0; y < targetHeight; y++) {
             int sourceY = Math.min(sourceHeight - 1, (int) (((long) y * sourceHeight) / targetHeight));
             for (int x = 0; x < targetWidth; x++) {
                 int sourceX = Math.min(sourceWidth - 1, (int) (((long) x * sourceWidth) / targetWidth));
-                int src = (sourceY * sourceWidth + sourceX) * 4;
-                int dst = (y * targetWidth + x) * 4;
-                scaled[dst] = source[src];
-                scaled[dst + 1] = source[src + 1];
-                scaled[dst + 2] = source[src + 2];
-                scaled[dst + 3] = source[src + 3];
+                scaled[y * targetWidth + x] = source[sourceY * sourceWidth + sourceX];
             }
         }
         return scaled;
     }
 
-    private static byte[] scaleBilinear(byte[] source, int sourceWidth, int sourceHeight, int targetWidth, int targetHeight) {
-        byte[] scaled = new byte[targetWidth * targetHeight * 4];
+    private static int[] scaleBilinear(int[] source, int sourceWidth, int sourceHeight, int targetWidth, int targetHeight) {
+        int[] scaled = new int[targetWidth * targetHeight];
         float xScale = targetWidth > 1 ? (float) (sourceWidth - 1) / (targetWidth - 1) : 0f;
         float yScale = targetHeight > 1 ? (float) (sourceHeight - 1) / (targetHeight - 1) : 0f;
 
@@ -76,20 +71,26 @@ public final class PixelScaler {
                 int x1 = Math.min(sourceWidth - 1, x0 + 1);
                 float fx = sourceX - x0;
 
-                int dst = (y * targetWidth + x) * 4;
-                int c00 = (y0 * sourceWidth + x0) * 4;
-                int c10 = (y0 * sourceWidth + x1) * 4;
-                int c01 = (y1 * sourceWidth + x0) * 4;
-                int c11 = (y1 * sourceWidth + x1) * 4;
+                int c00 = source[y0 * sourceWidth + x0];
+                int c10 = source[y0 * sourceWidth + x1];
+                int c01 = source[y1 * sourceWidth + x0];
+                int c11 = source[y1 * sourceWidth + x1];
 
-                for (int channel = 0; channel < 4; channel++) {
-                    float top = lerp(source[c00 + channel] & 0xFF, source[c10 + channel] & 0xFF, fx);
-                    float bottom = lerp(source[c01 + channel] & 0xFF, source[c11 + channel] & 0xFF, fx);
-                    scaled[dst + channel] = (byte) Math.round(lerp(top, bottom, fy));
-                }
+                int alpha = interpolateChannel(c00 >>> 24, c10 >>> 24, c01 >>> 24, c11 >>> 24, fx, fy);
+                int red = interpolateChannel((c00 >>> 16) & 0xFF, (c10 >>> 16) & 0xFF, (c01 >>> 16) & 0xFF, (c11 >>> 16) & 0xFF, fx, fy);
+                int green = interpolateChannel((c00 >>> 8) & 0xFF, (c10 >>> 8) & 0xFF, (c01 >>> 8) & 0xFF, (c11 >>> 8) & 0xFF, fx, fy);
+                int blue = interpolateChannel(c00 & 0xFF, c10 & 0xFF, c01 & 0xFF, c11 & 0xFF, fx, fy);
+
+                scaled[y * targetWidth + x] = Argb.pack(alpha, red, green, blue);
             }
         }
         return scaled;
+    }
+
+    private static int interpolateChannel(int c00, int c10, int c01, int c11, float fx, float fy) {
+        float top = lerp(c00, c10, fx);
+        float bottom = lerp(c01, c11, fx);
+        return Math.round(lerp(top, bottom, fy));
     }
 
     private static float lerp(float a, float b, float t) {
