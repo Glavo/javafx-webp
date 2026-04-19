@@ -38,7 +38,6 @@ import java.util.List;
 public final class WebPFXImage extends WritableImage {
 
     private final List<WebPFrame> frames;
-    private final long[] frameStartMillis;
     private final int loopCount;
     private @Nullable Timeline timeline;
     private int renderedFrameIndex;
@@ -49,7 +48,6 @@ public final class WebPFXImage extends WritableImage {
     public WebPFXImage(WebPFrame frame) {
         super(frame.getWidth(), frame.getHeight());
         this.frames = List.of(frame);
-        this.frameStartMillis = new long[]{0L};
         this.loopCount = 1;
         this.renderedFrameIndex = 0;
         writeFrame(frame);
@@ -63,7 +61,6 @@ public final class WebPFXImage extends WritableImage {
     public WebPFXImage(WebPImage image) {
         super(image.getWidth(), image.getHeight());
         this.frames = image.getFrames();
-        this.frameStartMillis = computeFrameStartMillis(frames);
         this.loopCount = image.getLoopCount();
         this.renderedFrameIndex = 0;
         writeFrame(frames.get(0));
@@ -115,27 +112,17 @@ public final class WebPFXImage extends WritableImage {
         }
 
         List<KeyFrame> keyFrames = new ArrayList<>(frames.size() + 1);
-        long totalDurationMillis = 0L;
+        long currentStartMillis = 0L;
         for (int i = 0; i < frames.size(); i++) {
             int frameIndex = i;
-            keyFrames.add(new KeyFrame(Duration.millis(frameStartMillis[i]), event -> renderFrame(frameIndex)));
+            keyFrames.add(new KeyFrame(Duration.millis(currentStartMillis), event -> renderFrame(frameIndex)));
             WebPFrame frame = frames.get(i);
-            totalDurationMillis = frameStartMillis[i] + normalizedDurationMillis(frame);
+            currentStartMillis += normalizedDurationMillis(frame);
         }
 
         // The terminal marker keeps the last frame visible for its full duration.
-        keyFrames.add(new KeyFrame(Duration.millis(totalDurationMillis)));
+        keyFrames.add(new KeyFrame(Duration.millis(currentStartMillis)));
         return keyFrames;
-    }
-
-    private static long[] computeFrameStartMillis(List<WebPFrame> frames) {
-        long[] frameStartMillis = new long[frames.size()];
-        long currentStartMillis = 0L;
-        for (int i = 0; i < frames.size(); i++) {
-            frameStartMillis[i] = currentStartMillis;
-            currentStartMillis += normalizedDurationMillis(frames.get(i));
-        }
-        return frameStartMillis;
     }
 
     private static int normalizedDurationMillis(WebPFrame frame) {
@@ -159,16 +146,13 @@ public final class WebPFXImage extends WritableImage {
 
     private int frameIndexAt(double currentMillis) {
         double millis = Math.max(0.0, currentMillis);
-        int low = 0;
-        int high = frameStartMillis.length - 1;
-        while (low <= high) {
-            int mid = (low + high) >>> 1;
-            if (frameStartMillis[mid] <= millis) {
-                low = mid + 1;
-            } else {
-                high = mid - 1;
+        long nextFrameStartMillis = 0L;
+        for (int i = 0; i < frames.size(); i++) {
+            nextFrameStartMillis += normalizedDurationMillis(frames.get(i));
+            if (millis < nextFrameStartMillis || i == frames.size() - 1) {
+                return i;
             }
         }
-        return Math.max(0, high);
+        return 0;
     }
 }
