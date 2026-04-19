@@ -40,7 +40,7 @@ public final class WebPFXImage extends WritableImage {
     private final List<WebPFrame> frames;
     private final int loopCount;
     private @Nullable Timeline timeline;
-    private int renderedFrameIndex;
+    private int renderedFrameIndex = -1;
 
     /// Creates a JavaFX image from one decoded frame.
     ///
@@ -49,8 +49,8 @@ public final class WebPFXImage extends WritableImage {
         super(frame.getWidth(), frame.getHeight());
         this.frames = List.of(frame);
         this.loopCount = 1;
-        this.renderedFrameIndex = 0;
-        writeFrame(frame);
+
+        renderFrame(0);
     }
 
     /// Creates a JavaFX image from fully decoded WebP content.
@@ -62,8 +62,15 @@ public final class WebPFXImage extends WritableImage {
         super(image.getWidth(), image.getHeight());
         this.frames = image.getFrames();
         this.loopCount = image.getLoopCount();
-        this.renderedFrameIndex = 0;
-        writeFrame(frames.get(0));
+
+        renderFrame(0);
+    }
+
+    /// Returns whether this image is animated.
+    ///
+    /// @return `true` if this image contains multiple frames.
+    public boolean isAnimated() {
+        return frames.size() > 1;
     }
 
     /// Returns the JavaFX timeline that drives this image's animation.
@@ -73,25 +80,23 @@ public final class WebPFXImage extends WritableImage {
     /// `Timeline` API such as `play()`, `pause()`, `stop()`, `jumpTo(...)`, or `setRate(...)`.
     /// The timeline is created lazily on first access. Static images return `null`.
     public @Nullable Timeline getAnimation() {
-        if (frames.size() <= 1) {
+        if (isAnimated()) {
+            if (timeline == null) {
+                timeline = new Timeline();
+                timeline.setCycleCount(loopCount == 0 ? Animation.INDEFINITE : loopCount);
+                timeline.getKeyFrames().setAll(createKeyFrames());
+            }
+            return timeline;
+        } else {
             return null;
         }
+    }
 
-        Timeline currentTimeline = timeline;
-        if (currentTimeline == null) {
-            currentTimeline = new Timeline();
-            currentTimeline.setCycleCount(loopCount == 0 ? Animation.INDEFINITE : Math.max(1, loopCount));
-            currentTimeline.getKeyFrames().setAll(createKeyFrames());
-            Timeline timelineRef = currentTimeline;
-            currentTimeline.currentTimeProperty().addListener((observable, oldValue, newValue) -> {
-                if (timelineRef.getStatus() != Animation.Status.RUNNING) {
-                    renderFrameAt(newValue);
-                }
-            });
-
-            this.timeline = currentTimeline;
+    private void renderFrame(int frameIndex) {
+        if (frameIndex != renderedFrameIndex) {
+            renderedFrameIndex = frameIndex;
+            writeFrame(frames.get(frameIndex));
         }
-        return currentTimeline;
     }
 
     private void writeFrame(WebPFrame frame) {
@@ -117,7 +122,7 @@ public final class WebPFXImage extends WritableImage {
             int frameIndex = i;
             keyFrames.add(new KeyFrame(Duration.millis(currentStartMillis), event -> renderFrame(frameIndex)));
             WebPFrame frame = frames.get(i);
-            currentStartMillis += normalizedDurationMillis(frame);
+            currentStartMillis += Math.max(1, frame.getDurationMillis());
         }
 
         // The terminal marker keeps the last frame visible for its full duration.
@@ -125,34 +130,4 @@ public final class WebPFXImage extends WritableImage {
         return keyFrames;
     }
 
-    private static int normalizedDurationMillis(WebPFrame frame) {
-        return Math.max(1, frame.getDurationMillis());
-    }
-
-    private void renderFrameAt(Duration time) {
-        if (frames.size() <= 1) {
-            return;
-        }
-
-        renderFrame(frameIndexAt(time.toMillis()));
-    }
-
-    private void renderFrame(int frameIndex) {
-        if (frameIndex != renderedFrameIndex) {
-            renderedFrameIndex = frameIndex;
-            writeFrame(frames.get(frameIndex));
-        }
-    }
-
-    private int frameIndexAt(double currentMillis) {
-        double millis = Math.max(0.0, currentMillis);
-        long nextFrameStartMillis = 0L;
-        for (int i = 0; i < frames.size(); i++) {
-            nextFrameStartMillis += normalizedDurationMillis(frames.get(i));
-            if (millis < nextFrameStartMillis || i == frames.size() - 1) {
-                return i;
-            }
-        }
-        return 0;
-    }
 }

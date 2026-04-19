@@ -118,11 +118,11 @@ final class WebPFXImageTest {
             return null;
         });
         assertEquals(Animation.Status.STOPPED, callOnFxThread(animation::getStatus));
-        assertEquals(RED, callOnFxThread(() -> image.getPixelReader().getArgb(0, 0)));
+        assertEquals(GREEN, callOnFxThread(() -> image.getPixelReader().getArgb(0, 0)));
     }
 
     @Test
-    void timelineJumpToAndPlayFromStartUpdateDisplayedPixels() throws Exception {
+    void timelinePlayFromStartRestartsFromFirstFrame() throws Exception {
         WebPFXImage image = callOnFxThread(() -> new WebPFXImage(
                 animatedImage(0, frame(RED, 40), frame(GREEN, 40), frame(BLUE, 40))
         ));
@@ -136,7 +136,7 @@ final class WebPFXImageTest {
             animation.jumpTo(Duration.millis(80));
             return null;
         });
-        assertEquals(BLUE, callOnFxThread(() -> image.getPixelReader().getArgb(0, 0)));
+        assertEquals(RED, callOnFxThread(() -> image.getPixelReader().getArgb(0, 0)));
 
         callOnFxThread(() -> {
             animation.playFromStart();
