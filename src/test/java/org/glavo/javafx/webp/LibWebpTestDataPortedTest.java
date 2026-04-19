@@ -15,6 +15,8 @@
  */
 package org.glavo.javafx.webp;
 
+import org.jetbrains.annotations.NotNullByDefault;
+
 import javafx.scene.image.Image;
 import javafx.scene.image.PixelReader;
 import org.glavo.javafx.webp.internal.Argb;
@@ -42,6 +44,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /// 2. verify that multiple differently-encoded bitstreams decode to the same pixels.
 ///
 /// This class mirrors those checks using the Java decoder directly, without invoking `dwebp`.
+@NotNullByDefault
 final class LibWebpTestDataPortedTest {
 
     private static final String TEST_DATA_ROOT = "libwebp-test-data/";
@@ -287,9 +290,11 @@ final class LibWebpTestDataPortedTest {
         return input;
     }
 
+    @NotNullByDefault
     private record ReferenceImage(int width, int height, int[] argb) {
     }
 
+    @NotNullByDefault
     private record ManifestEntry(String md5, String webpFile) {
     }
 }

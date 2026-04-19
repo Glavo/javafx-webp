@@ -15,6 +15,8 @@
  */
 package org.glavo.javafx.webp.internal.io;
 
+import org.jetbrains.annotations.NotNullByDefault;
+
 import org.glavo.javafx.webp.WebPException;
 import org.glavo.javafx.webp.internal.codec.FourCC;
 
@@ -25,6 +27,7 @@ import java.util.Arrays;
 /// The pure-Java decoder uses this reader for chunk payloads after the streaming container layer
 /// has isolated them. The implementation favors predictable bounds checks and simple primitive read
 /// helpers because the decode hot paths perform many small reads.
+@NotNullByDefault
 public final class ByteArrayReader {
 
     private final byte[] data;

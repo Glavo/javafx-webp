@@ -15,6 +15,9 @@
  */
 package org.glavo.javafx.webp.internal.codec;
 
+import org.jetbrains.annotations.NotNullByDefault;
+import org.jetbrains.annotations.Nullable;
+
 import org.glavo.javafx.webp.WebPException;
 import org.glavo.javafx.webp.internal.Argb;
 import org.glavo.javafx.webp.internal.lossless.LosslessDecoder;
@@ -22,9 +25,11 @@ import org.glavo.javafx.webp.internal.lossless.LosslessDecoder;
 import java.util.Arrays;
 
 /// Utilities for extended WebP features such as alpha reconstruction and animation composition.
+@NotNullByDefault
 public final class ExtendedWebP {
 
     /// Filtering methods defined by the WebP ALPH chunk format.
+    @NotNullByDefault
     public enum FilteringMethod {
         NONE,
         HORIZONTAL,
@@ -36,6 +41,7 @@ public final class ExtendedWebP {
     ///
     /// @param filteringMethod the alpha predictor mode
     /// @param data decoded alpha bytes, one per pixel
+    @NotNullByDefault
     public record AlphaChunk(FilteringMethod filteringMethod, byte[] data) {
     }
 
@@ -179,7 +185,7 @@ public final class ExtendedWebP {
             int[] canvas,
             int canvasWidth,
             int canvasHeight,
-            Integer clearColor,
+            @Nullable Integer clearColor,
             int[] frame,
             int frameX,
             int frameY,

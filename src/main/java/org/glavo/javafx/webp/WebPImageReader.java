@@ -15,6 +15,9 @@
  */
 package org.glavo.javafx.webp;
 
+import org.jetbrains.annotations.NotNullByDefault;
+import org.jetbrains.annotations.Nullable;
+
 import org.glavo.javafx.webp.internal.PixelScaler;
 import org.glavo.javafx.webp.internal.ScalePlan;
 import org.glavo.javafx.webp.internal.codec.ExtendedWebP;
@@ -37,6 +40,7 @@ import java.util.Optional;
 /// needed for later decode, and decodes frames on demand in presentation order. Scaling is applied
 /// immediately after each frame is decoded or composited so callers do not need to allocate both
 /// source-sized and target-sized frame lists.
+@NotNullByDefault
 public final class WebPImageReader implements AutoCloseable {
 
     private static final int TRANSPARENT = 0x00000000;
@@ -47,7 +51,7 @@ public final class WebPImageReader implements AutoCloseable {
     private int nextFrameIndex;
     private boolean closed;
 
-    private int[] animationCanvas;
+    private int @Nullable [] animationCanvas;
     private boolean disposeNextFrame = true;
     private int previousFrameWidth;
     private int previousFrameHeight;

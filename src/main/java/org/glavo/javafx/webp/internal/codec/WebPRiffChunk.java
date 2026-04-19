@@ -15,7 +15,13 @@
  */
 package org.glavo.javafx.webp.internal.codec;
 
+import org.jetbrains.annotations.NotNullByDefault;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.Objects;
+
 /// All relevant RIFF chunk identifiers used by WebP containers.
+@NotNullByDefault
 public enum WebPRiffChunk {
     RIFF("RIFF"),
     WEBP("WEBP"),
@@ -30,19 +36,19 @@ public enum WebPRiffChunk {
     XMP("XMP "),
     UNKNOWN(null);
 
-    private final FourCC fourCc;
+    private final @Nullable FourCC fourCC;
 
-    WebPRiffChunk(String fourCC) {
-        this.fourCc = fourCC != null ? FourCC.of(fourCC) : null;
+    WebPRiffChunk(@Nullable String fourCC) {
+        this.fourCC = fourCC != null ? FourCC.of(fourCC) : null;
     }
 
     /// Maps a FourCC identifier to its chunk type.
     ///
     /// @param fourCC the chunk identifier
     /// @return the matching chunk type, or [#UNKNOWN]
-    public static WebPRiffChunk fromFourCc(FourCC fourCC) {
+    public static WebPRiffChunk fromFourCC(FourCC fourCC) {
         for (WebPRiffChunk value : values()) {
-            if (value != UNKNOWN && value.fourCc.equals(fourCC)) {
+            if (Objects.equals(value.fourCC, fourCC)) {
                 return value;
             }
         }
@@ -51,8 +57,12 @@ public enum WebPRiffChunk {
 
     /// Returns the canonical FourCC value when one exists.
     ///
-    /// @return the chunk identifier, or `null` for [#UNKNOWN]
+    /// @return the chunk identifier.
+    /// @throws IllegalStateException if the chunk has no FourCC identifier
     public FourCC fourCC() {
-        return fourCc;
+        if (fourCC == null) {
+            throw new IllegalStateException("No FourCC for " + this);
+        }
+        return fourCC;
     }
 }

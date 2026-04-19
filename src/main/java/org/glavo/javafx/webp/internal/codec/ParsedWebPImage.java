@@ -15,6 +15,9 @@
  */
 package org.glavo.javafx.webp.internal.codec;
 
+import org.jetbrains.annotations.NotNullByDefault;
+import org.jetbrains.annotations.Nullable;
+
 import org.glavo.javafx.webp.LoopCount;
 import org.glavo.javafx.webp.WebPMetadata;
 
@@ -32,6 +35,7 @@ import java.util.List;
 /// @param metadata raw ICC/EXIF/XMP metadata
 /// @param backgroundColorHint the animation background color hint, or `null`
 /// @param frames encoded frame descriptors in presentation order
+@NotNullByDefault
 public record ParsedWebPImage(
         int sourceWidth,
         int sourceHeight,
@@ -41,7 +45,7 @@ public record ParsedWebPImage(
         LoopCount loopCount,
         long loopDurationMillis,
         WebPMetadata metadata,
-        byte[] backgroundColorHint,
+        byte @Nullable [] backgroundColorHint,
         List<ParsedFrameDescriptor> frames
 ) {
 }

@@ -15,6 +15,8 @@
  */
 package org.glavo.javafx.webp.internal;
 
+import org.jetbrains.annotations.NotNullByDefault;
+
 import org.glavo.javafx.webp.LoopCount;
 import org.glavo.javafx.webp.WebPMetadata;
 
@@ -31,6 +33,7 @@ import java.util.List;
 /// @param loopDurationMillis the total duration of one animation loop
 /// @param metadata raw ICC/EXIF/XMP metadata
 /// @param frames frame timing information in presentation order
+@NotNullByDefault
 public record WebPContainerInfo(
         int sourceWidth,
         int sourceHeight,

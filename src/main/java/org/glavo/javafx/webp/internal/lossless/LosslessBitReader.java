@@ -15,11 +15,14 @@
  */
 package org.glavo.javafx.webp.internal.lossless;
 
+import org.jetbrains.annotations.NotNullByDefault;
+
 import org.glavo.javafx.webp.WebPException;
 
 /// Bit reader for VP8L streams.
 ///
 /// Bits are consumed least-significant-bit first as required by the WebP lossless format.
+@NotNullByDefault
 public final class LosslessBitReader {
 
     private final byte[] data;

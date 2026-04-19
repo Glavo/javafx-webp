@@ -15,9 +15,12 @@
  */
 package org.glavo.javafx.webp.internal.lossy;
 
+import org.jetbrains.annotations.NotNullByDefault;
+
 import org.glavo.javafx.webp.internal.Argb;
 
 /// YUV to RGB conversion helpers used by the VP8 decoder.
+@NotNullByDefault
 final class LossyYuv {
 
     private static final int YUV_FIX = 16;

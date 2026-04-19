@@ -15,6 +15,8 @@
  */
 package org.glavo.javafx.webp;
 
+import org.jetbrains.annotations.NotNullByDefault;
+
 import java.util.Objects;
 
 /// Describes how many times an animated WebP should loop.
@@ -22,6 +24,7 @@ import java.util.Objects;
 /// The WebP container stores loop count as the number of animation repetitions.
 /// A value of `0` means that the animation repeats forever. The library exposes
 /// that state explicitly to avoid sentinel integers in user code.
+@NotNullByDefault
 public final class LoopCount {
 
     private static final LoopCount FOREVER = new LoopCount(true, 0);

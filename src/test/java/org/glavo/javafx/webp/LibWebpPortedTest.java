@@ -15,6 +15,8 @@
  */
 package org.glavo.javafx.webp;
 
+import org.jetbrains.annotations.NotNullByDefault;
+
 import javafx.scene.image.Image;
 import javafx.scene.image.PixelReader;
 import org.glavo.javafx.webp.internal.Argb;
@@ -39,6 +41,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 /// regression cases under `tests/fuzzer`. This class ports the same intent to JUnit:
 /// example-image verification, API-style decode coverage for valid inputs, and malformed-regression
 /// inputs that must never trigger unexpected runtime failures.
+@NotNullByDefault
 final class LibWebpPortedTest {
 
     private static final String LIBWEBP_EXAMPLE_WEBP = "libwebp/examples/test.webp";
@@ -329,14 +332,17 @@ final class LibWebpPortedTest {
         return input;
     }
 
+    @NotNullByDefault
     private record ReferenceImage(int width, int height, int[] pixels) {
     }
 
+    @NotNullByDefault
     private interface ThrowingRunnable {
         void run() throws Exception;
     }
 
     /// Forward-only stream that limits read calls to small chunks and does not support mark/reset.
+    @NotNullByDefault
     private static final class ChunkedInputStream extends InputStream {
         private final byte[] data;
         private final int chunkSize;

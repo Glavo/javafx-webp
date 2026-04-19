@@ -15,6 +15,8 @@
  */
 package org.glavo.javafx.webp.internal.lossless;
 
+import org.jetbrains.annotations.NotNullByDefault;
+
 import org.glavo.javafx.webp.WebPException;
 import org.junit.jupiter.api.Test;
 
@@ -22,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /// Ports of [lossless/decoder/mod.rs](https://github.com/image-rs/image-webp/blob/f4d80bd965df2c81e65b6f43c1f70e0750bd4b0f/src/lossless/decoder/mod.rs) bit-reader tests.
+@NotNullByDefault
 final class LosslessBitReaderTest {
 
     @Test

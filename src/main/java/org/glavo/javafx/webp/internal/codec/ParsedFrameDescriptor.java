@@ -15,6 +15,9 @@
  */
 package org.glavo.javafx.webp.internal.codec;
 
+import org.jetbrains.annotations.NotNullByDefault;
+import org.jetbrains.annotations.Nullable;
+
 /// Encoded frame data extracted from a WebP container.
 ///
 /// @param x the frame x offset within the canvas
@@ -27,6 +30,7 @@ package org.glavo.javafx.webp.internal.codec;
 /// @param lossless whether the image chunk uses VP8L lossless compression
 /// @param alphaChunk the optional ALPH payload, or `null`
 /// @param imageChunk the VP8 or VP8L payload
+@NotNullByDefault
 public record ParsedFrameDescriptor(
         int x,
         int y,
@@ -36,7 +40,7 @@ public record ParsedFrameDescriptor(
         boolean useAlphaBlending,
         boolean disposeToBackground,
         boolean lossless,
-        byte[] alphaChunk,
+        byte @Nullable [] alphaChunk,
         byte[] imageChunk
 ) {
 }

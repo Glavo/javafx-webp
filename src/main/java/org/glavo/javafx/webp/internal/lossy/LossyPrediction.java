@@ -15,9 +15,12 @@
  */
 package org.glavo.javafx.webp.internal.lossy;
 
+import org.jetbrains.annotations.NotNullByDefault;
+
 import org.glavo.javafx.webp.internal.lossy.LossyCommon.IntraMode;
 
 /// VP8 intra-prediction helpers.
+@NotNullByDefault
 final class LossyPrediction {
 
     static final int LUMA_BLOCK_SIZE = (1 + 16 + 4) * (1 + 16);

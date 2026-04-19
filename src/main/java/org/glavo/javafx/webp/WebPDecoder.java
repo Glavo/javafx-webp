@@ -15,6 +15,8 @@
  */
 package org.glavo.javafx.webp;
 
+import org.jetbrains.annotations.NotNullByDefault;
+
 import javafx.scene.image.WritableImage;
 
 import java.io.IOException;
@@ -28,6 +30,7 @@ import java.util.List;
 ///
 /// The class offers both eager decoding through [#decodeAll(InputStream, WebPImageLoadOptions)]
 /// and forward-only frame consumption through [#open(InputStream, WebPImageLoadOptions)].
+@NotNullByDefault
 public final class WebPDecoder {
 
     private WebPDecoder() {

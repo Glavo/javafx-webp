@@ -15,6 +15,8 @@
  */
 package org.glavo.javafx.webp.internal.lossy;
 
+import org.jetbrains.annotations.NotNullByDefault;
+
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
@@ -22,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /// Ports of [lossy/prediction.rs](https://github.com/image-rs/image-webp/blob/f4d80bd965df2c81e65b6f43c1f70e0750bd4b0f/src/lossy/prediction.rs) tests.
+@NotNullByDefault
 final class LossyPredictionTest {
 
     @Test

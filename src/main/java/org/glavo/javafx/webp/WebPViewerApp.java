@@ -15,6 +15,9 @@
  */
 package org.glavo.javafx.webp;
 
+import org.jetbrains.annotations.NotNullByDefault;
+import org.jetbrains.annotations.Nullable;
+
 import javafx.animation.PauseTransition;
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -43,14 +46,15 @@ import java.util.List;
 /// The application is intentionally lightweight and uses the public decoder API directly.
 /// Static images are displayed immediately and animated WebP files are played back in an
 /// [ImageView] according to the frame durations exposed by [WebPDecoder].
+@NotNullByDefault
 public final class WebPViewerApp extends Application {
 
     private final ImageView imageView = new ImageView();
     private final Label statusLabel = new Label("Open a WebP file to start.");
     private final FileChooser fileChooser = createFileChooser();
 
-    private Stage stage;
-    private Playback playback;
+    private @Nullable Stage stage;
+    private @Nullable Playback playback;
 
     /// Launches the viewer application.
     ///
@@ -150,7 +154,7 @@ public final class WebPViewerApp extends Application {
         }
     }
 
-    private Path currentDirectory() {
+    private @Nullable Path currentDirectory() {
         if (playback != null) {
             Path parent = playback.path().getParent();
             if (parent != null && Files.isDirectory(parent)) {
@@ -203,6 +207,7 @@ public final class WebPViewerApp extends Application {
     /// The helper keeps pre-converted JavaFX [Image] instances and advances the
     /// presentation with a self-rescheduling [PauseTransition] so that frame-specific
     /// durations are honored without forcing a fixed-timestep animation loop.
+    @NotNullByDefault
     private final class Playback {
         private final Path path;
         private final WebPImage image;

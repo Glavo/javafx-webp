@@ -15,11 +15,15 @@
  */
 package org.glavo.javafx.webp.internal.lossless;
 
+import org.jetbrains.annotations.NotNullByDefault;
+import org.jetbrains.annotations.Nullable;
+
 import org.glavo.javafx.webp.WebPException;
 
 import java.util.Arrays;
 
 /// Huffman tree implementation for VP8L.
+@NotNullByDefault
 public final class LosslessHuffmanTree {
 
     private static final int MAX_ALLOWED_CODE_LENGTH = 15;
@@ -28,8 +32,8 @@ public final class LosslessHuffmanTree {
     private final boolean singleNode;
     private final int symbol;
     private final int tableMask;
-    private final int[] primaryTable;
-    private final int[] secondaryTable;
+    private final int @Nullable [] primaryTable;
+    private final int @Nullable [] secondaryTable;
 
     private LosslessHuffmanTree(int symbol) {
         this.singleNode = true;
@@ -208,7 +212,7 @@ public final class LosslessHuffmanTree {
     ///
     /// @param bitReader the lossless bit reader
     /// @return the peeked symbol, or `null` if a secondary table lookup would be required
-    public PeekedSymbol peekSymbol(LosslessBitReader bitReader) {
+    public @Nullable PeekedSymbol peekSymbol(LosslessBitReader bitReader) {
         if (singleNode) {
             return new PeekedSymbol(0, symbol);
         }
@@ -236,6 +240,7 @@ public final class LosslessHuffmanTree {
     ///
     /// @param bits the number of bits that would be consumed
     /// @param symbol the decoded symbol value
+    @NotNullByDefault
     public record PeekedSymbol(int bits, int symbol) {
     }
 }

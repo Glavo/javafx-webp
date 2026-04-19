@@ -15,6 +15,8 @@
  */
 package org.glavo.javafx.webp;
 
+import org.jetbrains.annotations.NotNullByDefault;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -22,6 +24,7 @@ import java.util.Optional;
 ///
 /// This type is the eager counterpart of [WebPImageReader]. It materializes all decoded
 /// frames and exposes the associated metadata and animation timing information in immutable form.
+@NotNullByDefault
 public final class WebPImage {
 
     private final int sourceWidth;

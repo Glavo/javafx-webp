@@ -15,11 +15,14 @@
  */
 package org.glavo.javafx.webp.internal;
 
+import org.jetbrains.annotations.NotNullByDefault;
+
 /// Pure packed-`ARGB` scaling routines used by the decoder backend.
 ///
 /// The scaler operates on tightly packed non-premultiplied `ARGB` data and therefore avoids all
 /// desktop imaging APIs. The `smooth` path uses bilinear interpolation while the fast path uses
 /// nearest-neighbor sampling.
+@NotNullByDefault
 public final class PixelScaler {
 
     private PixelScaler() {

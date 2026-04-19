@@ -15,9 +15,13 @@
  */
 package org.glavo.javafx.webp.internal.lossless;
 
+import org.jetbrains.annotations.NotNullByDefault;
+import org.jetbrains.annotations.Nullable;
+
 import org.glavo.javafx.webp.internal.Argb;
 
 /// Reverse transforms for VP8L decoded pixels.
+@NotNullByDefault
 public final class LosslessTransforms {
 
     /// Predictor transform tag.
@@ -36,13 +40,14 @@ public final class LosslessTransforms {
     }
 
     /// Encoded reverse-transform description.
+    @NotNullByDefault
     public static final class Transform {
         final int kind;
         final int sizeBits;
-        final int[] data;
+        final int @Nullable [] data;
         final int tableSize;
 
-        private Transform(int kind, int sizeBits, int[] data, int tableSize) {
+        private Transform(int kind, int sizeBits, int @Nullable [] data, int tableSize) {
             this.kind = kind;
             this.sizeBits = sizeBits;
             this.data = data;

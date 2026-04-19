@@ -15,6 +15,9 @@
  */
 package org.glavo.javafx.webp.internal.lossless;
 
+import org.jetbrains.annotations.NotNullByDefault;
+import org.jetbrains.annotations.Nullable;
+
 import org.glavo.javafx.webp.WebPException;
 import org.glavo.javafx.webp.internal.Argb;
 
@@ -26,6 +29,7 @@ import java.util.List;
 ///
 /// The implementation follows the structure of the reference `image-webp` lossless
 /// decoder. It decodes to tightly packed non-premultiplied `ARGB` pixels.
+@NotNullByDefault
 public final class LosslessDecoder {
 
     private static final int GREEN = 0;
@@ -39,7 +43,7 @@ public final class LosslessDecoder {
     private static final int NUM_TRANSFORM_TYPES = 4;
 
     private final LosslessBitReader bitReader;
-    private final LosslessTransforms.Transform[] transforms = new LosslessTransforms.Transform[NUM_TRANSFORM_TYPES];
+    private final LosslessTransforms.@Nullable Transform[] transforms = new LosslessTransforms.Transform[NUM_TRANSFORM_TYPES];
     private final int[] transformOrder = new int[NUM_TRANSFORM_TYPES];
     private int transformOrderSize;
     private int width;
@@ -178,7 +182,7 @@ public final class LosslessDecoder {
         }
     }
 
-    private HuffmanInfo readHuffmanCodes(boolean readMeta, int xsize, int ysize, ColorCache colorCache) throws WebPException {
+    private HuffmanInfo readHuffmanCodes(boolean readMeta, int xsize, int ysize, @Nullable ColorCache colorCache) throws WebPException {
         int numHuffGroups = 1;
         int huffmanBits = 0;
         int huffmanXSize = 1;
@@ -416,7 +420,7 @@ public final class LosslessDecoder {
         }
     }
 
-    private Integer readColorCache() throws WebPException {
+    private @Nullable Integer readColorCache() throws WebPException {
         if (bitReader.readBits(1) == 1) {
             int codeBits = bitReader.readBits(4);
             if (codeBits < 1 || codeBits > 11) {
@@ -447,15 +451,16 @@ public final class LosslessDecoder {
         return Math.max(distance, 1);
     }
 
+    @NotNullByDefault
     private static final class HuffmanInfo {
         final int xsize;
-        final ColorCache colorCache;
+        final @Nullable ColorCache colorCache;
         final int[] image;
         final int bits;
         final int mask;
         final List<LosslessHuffmanTree[]> huffmanCodeGroups;
 
-        private HuffmanInfo(int xsize, ColorCache colorCache, int[] image, int bits, int mask, List<LosslessHuffmanTree[]> huffmanCodeGroups) {
+        private HuffmanInfo(int xsize, @Nullable ColorCache colorCache, int[] image, int bits, int mask, List<LosslessHuffmanTree[]> huffmanCodeGroups) {
             this.xsize = xsize;
             this.colorCache = colorCache;
             this.image = image;
@@ -472,6 +477,7 @@ public final class LosslessDecoder {
         }
     }
 
+    @NotNullByDefault
     private static final class ColorCache {
         final int colorCacheBits;
         final int[] colorCache;

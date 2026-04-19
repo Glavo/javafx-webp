@@ -15,6 +15,8 @@
  */
 package org.glavo.javafx.webp.internal.io;
 
+import org.jetbrains.annotations.NotNullByDefault;
+
 import org.glavo.javafx.webp.WebPException;
 import org.glavo.javafx.webp.internal.codec.FourCC;
 
@@ -22,6 +24,7 @@ import java.io.IOException;
 import java.io.InputStream;
 
 /// Primitive stream helpers for the sequential RIFF parser.
+@NotNullByDefault
 public final class InputStreams {
 
     private InputStreams() {
@@ -32,7 +35,7 @@ public final class InputStreams {
     /// @param input the source stream
     /// @return the chunk identifier
     /// @throws IOException if the stream is truncated or unreadable
-    public static FourCC readFourCc(InputStream input) throws IOException {
+    public static FourCC readFourCC(InputStream input) throws IOException {
         byte[] fourCc = readFully(input, 4);
         return new FourCC(fourCc[0], fourCc[1], fourCc[2], fourCc[3]);
     }

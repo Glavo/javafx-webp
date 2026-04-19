@@ -15,11 +15,14 @@
  */
 package org.glavo.javafx.webp.internal;
 
+import org.jetbrains.annotations.NotNullByDefault;
+
 /// Packed non-premultiplied `ARGB` pixel helpers.
 ///
 /// The decoder stores public and post-decode pixels as `0xAARRGGBB` integers so the same pixel
 /// buffers can be exposed directly and also written to JavaFX through
 /// `PixelFormat.getIntArgbInstance()`.
+@NotNullByDefault
 public final class Argb {
 
     private Argb() {

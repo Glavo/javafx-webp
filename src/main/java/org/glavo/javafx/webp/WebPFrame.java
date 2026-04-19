@@ -15,6 +15,8 @@
  */
 package org.glavo.javafx.webp;
 
+import org.jetbrains.annotations.NotNullByDefault;
+
 import javafx.scene.image.WritableImage;
 import org.glavo.javafx.webp.internal.FxImages;
 
@@ -25,6 +27,7 @@ import java.nio.IntBuffer;
 /// For static images the library returns a single frame with a duration of `0`. For
 /// animated images each frame already represents the fully composited canvas for the corresponding
 /// presentation step, which makes the object suitable for direct JavaFX display.
+@NotNullByDefault
 public final class WebPFrame {
 
     private final int width;

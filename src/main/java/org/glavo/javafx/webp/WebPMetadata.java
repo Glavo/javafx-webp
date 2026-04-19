@@ -15,7 +15,9 @@
  */
 package org.glavo.javafx.webp;
 
-import java.util.Arrays;
+import org.jetbrains.annotations.NotNullByDefault;
+import org.jetbrains.annotations.Nullable;
+
 import java.util.Optional;
 
 /// Raw metadata chunks extracted from a WebP container.
@@ -23,13 +25,14 @@ import java.util.Optional;
 /// The WebP specification stores ICC, EXIF and XMP payloads as opaque byte arrays. This class
 /// exposes those payloads without attempting to interpret them, leaving higher-level processing to
 /// the caller.
+@NotNullByDefault
 public final class WebPMetadata {
 
     private static final WebPMetadata EMPTY = new WebPMetadata(null, null, null);
 
-    private final byte[] iccProfile;
-    private final byte[] exifMetadata;
-    private final byte[] xmpMetadata;
+    private final byte @Nullable [] iccProfile;
+    private final byte @Nullable [] exifMetadata;
+    private final byte @Nullable [] xmpMetadata;
 
     /// Returns an empty metadata container.
     ///
@@ -43,7 +46,7 @@ public final class WebPMetadata {
     /// @param iccProfile the ICC payload, or `null`
     /// @param exifMetadata the EXIF payload, or `null`
     /// @param xmpMetadata the XMP payload, or `null`
-    public WebPMetadata(byte[] iccProfile, byte[] exifMetadata, byte[] xmpMetadata) {
+    public WebPMetadata(byte @Nullable [] iccProfile, byte @Nullable [] exifMetadata, byte @Nullable [] xmpMetadata) {
         this.iccProfile = copyOrNull(iccProfile);
         this.exifMetadata = copyOrNull(exifMetadata);
         this.xmpMetadata = copyOrNull(xmpMetadata);
@@ -70,11 +73,11 @@ public final class WebPMetadata {
         return optionalCopy(xmpMetadata);
     }
 
-    private static byte[] copyOrNull(byte[] value) {
+    private static byte @Nullable [] copyOrNull(byte @Nullable [] value) {
         return value == null ? null : value.clone();
     }
 
-    private static Optional<byte[]> optionalCopy(byte[] value) {
+    private static Optional<byte[]> optionalCopy(byte @Nullable [] value) {
         return value == null ? Optional.empty() : Optional.of(value.clone());
     }
 
@@ -85,7 +88,7 @@ public final class WebPMetadata {
                 + ", xmp=" + lengthOf(xmpMetadata) + "]";
     }
 
-    private static int lengthOf(byte[] value) {
+    private static int lengthOf(byte @Nullable [] value) {
         return value == null ? 0 : value.length;
     }
 }

@@ -15,9 +15,12 @@
  */
 package org.glavo.javafx.webp.internal;
 
+import org.jetbrains.annotations.NotNullByDefault;
+
 import org.glavo.javafx.webp.WebPImageLoadOptions;
 
 /// Calculates the decoded output dimensions from JavaFX-style image loading options.
+@NotNullByDefault
 public record ScalePlan(
         int sourceWidth,
         int sourceHeight,

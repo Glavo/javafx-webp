@@ -15,12 +15,16 @@
  */
 package org.glavo.javafx.webp.internal.lossy;
 
+import org.jetbrains.annotations.NotNullByDefault;
+import org.jetbrains.annotations.Nullable;
+
 import org.glavo.javafx.webp.WebPException;
 
 /// VP8 boolean arithmetic decoder.
 ///
 /// The implementation mirrors the split fast-path / cold-path structure of the reference crate
 /// so that the eventual Java VP8 decoder can stay structurally close to the source material.
+@NotNullByDefault
 final class LossyArithmeticDecoder {
 
     private static final int FINAL_BYTES_REMAINING_EOF = -0xE;
@@ -69,7 +73,7 @@ final class LossyArithmeticDecoder {
         return new BitResultAccumulator();
     }
 
-    <T> T check(BitResultAccumulator accumulator, T valueIfNotPastEof) throws WebPException {
+    <T> @Nullable T check(BitResultAccumulator accumulator, @Nullable T valueIfNotPastEof) throws WebPException {
         if (isPastEof()) {
             throw new WebPException("Corrupt VP8 boolean bitstream");
         }
@@ -180,6 +184,7 @@ final class LossyArithmeticDecoder {
         return finalBytesRemaining == FINAL_BYTES_REMAINING_EOF;
     }
 
+    @NotNullByDefault
     static final class BitResult<T> {
         final T valueIfNotPastEof;
 
@@ -196,9 +201,11 @@ final class LossyArithmeticDecoder {
         }
     }
 
+    @NotNullByDefault
     static final class BitResultAccumulator {
     }
 
+    @NotNullByDefault
     private static final class State {
         int chunkIndex;
         long value;

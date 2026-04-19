@@ -15,7 +15,10 @@
  */
 package org.glavo.javafx.webp.internal.lossy;
 
+import org.jetbrains.annotations.NotNullByDefault;
+
 /// Inverse transform helpers used by the VP8 decoder.
+@NotNullByDefault
 final class LossyTransform {
 
     private static final long CONST1 = 20091;

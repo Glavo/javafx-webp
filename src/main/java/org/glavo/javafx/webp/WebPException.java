@@ -15,6 +15,8 @@
  */
 package org.glavo.javafx.webp;
 
+import org.jetbrains.annotations.NotNullByDefault;
+
 import java.io.IOException;
 
 /// Signals that WebP data could not be parsed or decoded.
@@ -22,6 +24,7 @@ import java.io.IOException;
 /// The exception extends [IOException] because failures typically happen while consuming
 /// an external byte stream. The library wraps lower-level parser and Image I/O failures in this
 /// type so callers can handle all WebP-specific read failures consistently.
+@NotNullByDefault
 public class WebPException extends IOException {
 
     /// Creates a new exception with the supplied message.

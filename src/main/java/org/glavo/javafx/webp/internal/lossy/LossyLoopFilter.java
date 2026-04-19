@@ -15,7 +15,10 @@
  */
 package org.glavo.javafx.webp.internal.lossy;
 
+import org.jetbrains.annotations.NotNullByDefault;
+
 /// VP8 loop filter implementation.
+@NotNullByDefault
 final class LossyLoopFilter {
 
     private LossyLoopFilter() {

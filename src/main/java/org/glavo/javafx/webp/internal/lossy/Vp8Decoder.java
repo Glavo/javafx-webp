@@ -15,6 +15,9 @@
  */
 package org.glavo.javafx.webp.internal.lossy;
 
+import org.jetbrains.annotations.NotNullByDefault;
+import org.jetbrains.annotations.Nullable;
+
 import org.glavo.javafx.webp.WebPException;
 import org.glavo.javafx.webp.internal.lossy.LossyCommon.ChromaMode;
 import org.glavo.javafx.webp.internal.lossy.LossyCommon.IntraMode;
@@ -35,6 +38,7 @@ import java.util.List;
 /// residual coefficients, reconstruct YUV planes, then apply the in-loop deblocking filter. Only
 /// VP8 keyframes are supported because WebP still images and animated frame subchunks store
 /// keyframe payloads.
+@NotNullByDefault
 public final class Vp8Decoder {
 
     private final InputStream input;
@@ -68,7 +72,7 @@ public final class Vp8Decoder {
     private TreeNode[] segmentTreeNodes = LossyTables.copyTreeNodes(LossyTables.SEGMENT_TREE_NODE_DEFAULTS);
     private TreeNode[][][][] tokenProbs = LossyTables.copyCoeffProbNodes();
 
-    private Integer probSkipFalse;
+    private @Nullable Integer probSkipFalse;
     private PreviousMacroBlock[] top = new PreviousMacroBlock[0];
     private PreviousMacroBlock left = new PreviousMacroBlock();
 
@@ -981,6 +985,7 @@ public final class Vp8Decoder {
         return readU8(input) | (readU8(input) << 8) | (readU8(input) << 16);
     }
 
+    @NotNullByDefault
     private static final class MacroBlock {
         final IntraMode[] bpred = new IntraMode[16];
         LumaMode lumaMode = LumaMode.DC;
@@ -994,6 +999,7 @@ public final class Vp8Decoder {
         }
     }
 
+    @NotNullByDefault
     private static final class PreviousMacroBlock {
         final IntraMode[] bpred = new IntraMode[4];
         final int[] complexity = new int[9];
@@ -1003,6 +1009,7 @@ public final class Vp8Decoder {
         }
     }
 
+    @NotNullByDefault
     private record FilterParameters(int filterLevel, int interiorLimit, int hevThreshold) {
     }
 }

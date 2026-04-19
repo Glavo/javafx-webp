@@ -15,11 +15,15 @@
  */
 package org.glavo.javafx.webp.internal.lossy;
 
+import org.jetbrains.annotations.NotNullByDefault;
+import org.jetbrains.annotations.Nullable;
+
 /// Shared VP8 lossy constants and enums.
 ///
 /// This class intentionally starts with the mode and segment definitions that are required by
 /// the prediction and reconstruction helpers. Additional probability tables are added alongside the
 /// main VP8 decoder port, where they are actually consumed.
+@NotNullByDefault
 final class LossyCommon {
 
     static final int MAX_SEGMENTS = 4;
@@ -45,6 +49,7 @@ final class LossyCommon {
     private LossyCommon() {
     }
 
+    @NotNullByDefault
     enum Plane {
         Y_COEFF_1,
         Y2,
@@ -52,6 +57,7 @@ final class LossyCommon {
         Y_COEFF_0
     }
 
+    @NotNullByDefault
     enum LumaMode {
         DC(DC_PRED),
         V(V_PRED),
@@ -65,7 +71,7 @@ final class LossyCommon {
             this.code = code;
         }
 
-        static LumaMode fromCode(int code) {
+        static @Nullable LumaMode fromCode(int code) {
             return switch (code) {
                 case DC_PRED -> DC;
                 case V_PRED -> V;
@@ -76,7 +82,7 @@ final class LossyCommon {
             };
         }
 
-        IntraMode asIntraMode() {
+        @Nullable IntraMode asIntraMode() {
             return switch (this) {
                 case DC -> IntraMode.DC;
                 case V -> IntraMode.VE;
@@ -87,6 +93,7 @@ final class LossyCommon {
         }
     }
 
+    @NotNullByDefault
     enum ChromaMode {
         DC(DC_PRED),
         V(V_PRED),
@@ -99,7 +106,7 @@ final class LossyCommon {
             this.code = code;
         }
 
-        static ChromaMode fromCode(int code) {
+        static @Nullable ChromaMode fromCode(int code) {
             return switch (code) {
                 case DC_PRED -> DC;
                 case V_PRED -> V;
@@ -110,6 +117,7 @@ final class LossyCommon {
         }
     }
 
+    @NotNullByDefault
     enum IntraMode {
         DC(B_DC_PRED),
         TM(B_TM_PRED),
@@ -128,7 +136,7 @@ final class LossyCommon {
             this.code = code;
         }
 
-        static IntraMode fromCode(int code) {
+        static @Nullable IntraMode fromCode(int code) {
             return switch (code) {
                 case B_DC_PRED -> DC;
                 case B_TM_PRED -> TM;
@@ -145,6 +153,7 @@ final class LossyCommon {
         }
     }
 
+    @NotNullByDefault
     static final class Segment {
         short ydc;
         short yac;

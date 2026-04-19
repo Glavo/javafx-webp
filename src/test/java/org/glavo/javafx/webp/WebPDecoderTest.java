@@ -15,6 +15,8 @@
  */
 package org.glavo.javafx.webp;
 
+import org.jetbrains.annotations.NotNullByDefault;
+
 import javafx.scene.image.Image;
 import javafx.scene.image.PixelReader;
 import org.glavo.javafx.webp.internal.Argb;
@@ -29,6 +31,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 /// Integration tests for the public WebP decoding API.
+@NotNullByDefault
 final class WebPDecoderTest {
 
     @Test

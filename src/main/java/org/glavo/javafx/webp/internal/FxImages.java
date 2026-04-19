@@ -15,11 +15,14 @@
  */
 package org.glavo.javafx.webp.internal;
 
+import org.jetbrains.annotations.NotNullByDefault;
+
 import javafx.scene.image.PixelFormat;
 import javafx.scene.image.PixelWriter;
 import javafx.scene.image.WritableImage;
 
 /// JavaFX image conversion helpers.
+@NotNullByDefault
 public final class FxImages {
 
     private FxImages() {

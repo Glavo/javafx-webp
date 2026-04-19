@@ -15,11 +15,14 @@
  */
 package org.glavo.javafx.webp.internal.codec;
 
+import org.jetbrains.annotations.NotNullByDefault;
+
 import org.glavo.javafx.webp.LoopCount;
 import org.glavo.javafx.webp.WebPException;
 import org.glavo.javafx.webp.WebPMetadata;
 import org.glavo.javafx.webp.internal.io.ByteArrayReader;
 import org.glavo.javafx.webp.internal.io.InputStreams;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -31,6 +34,7 @@ import java.util.List;
 ///
 /// The parser consumes a forward-only stream and extracts frame descriptors, metadata and
 /// animation timing. Actual pixel decoding is delegated to the VP8L or VP8 codecs.
+@NotNullByDefault
 public final class WebPSequentialParser {
 
     private static final int FLAG_ANIMATION = 1 << 1;
@@ -48,13 +52,13 @@ public final class WebPSequentialParser {
     /// @return the parsed container data
     /// @throws IOException if the stream is truncated or malformed
     public static ParsedWebPImage parse(InputStream input) throws IOException {
-        FourCC riff = InputStreams.readFourCc(input);
+        FourCC riff = InputStreams.readFourCC(input);
         if (!WebPRiffChunk.RIFF.fourCC().equals(riff)) {
             throw new WebPException("Missing RIFF container header");
         }
 
         long riffSize = InputStreams.readU32LE(input);
-        FourCC webp = InputStreams.readFourCc(input);
+        FourCC webp = InputStreams.readFourCC(input);
         if (!WebPRiffChunk.WEBP.fourCC().equals(webp)) {
             throw new WebPException("Missing WEBP signature");
         }
@@ -143,14 +147,14 @@ public final class WebPSequentialParser {
         boolean animated = (flags & FLAG_ANIMATION) != 0;
         boolean alpha = (flags & FLAG_ALPHA) != 0;
         boolean lossy = false;
-        byte[] iccProfile = null;
-        byte[] exifMetadata = null;
-        byte[] xmpMetadata = null;
-        byte[] backgroundColorHint = null;
+        byte @Nullable [] iccProfile = null;
+        byte @Nullable [] exifMetadata = null;
+        byte @Nullable [] xmpMetadata = null;
+        byte @Nullable [] backgroundColorHint = null;
         LoopCount loopCount = LoopCount.of(1);
         long loopDurationMillis = 0;
         List<ParsedFrameDescriptor> frames = new ArrayList<>();
-        byte[] pendingAlphaChunk = null;
+        byte @Nullable [] pendingAlphaChunk = null;
 
         while (remainingBytes > 0) {
             ChunkPayload chunk = readChunk(input);
@@ -268,12 +272,12 @@ public final class WebPSequentialParser {
             throw new WebPException("Animated frame lies outside the canvas");
         }
 
-        byte[] alphaChunk = null;
-        byte[] imageChunk = null;
+        byte @Nullable [] alphaChunk = null;
+        byte @Nullable [] imageChunk = null;
         boolean lossless = false;
         while (frame.remaining() > 0) {
             FourCC fourCc = frame.readFourCc();
-            WebPRiffChunk type = WebPRiffChunk.fromFourCc(fourCc);
+            WebPRiffChunk type = WebPRiffChunk.fromFourCC(fourCc);
             long chunkSize = frame.readU32LE();
             if (chunkSize > Integer.MAX_VALUE) {
                 throw new WebPException("Animated frame chunk is too large to buffer");
@@ -374,7 +378,7 @@ public final class WebPSequentialParser {
     }
 
     private static ChunkPayload readChunk(InputStream input) throws IOException {
-        FourCC fourCc = InputStreams.readFourCc(input);
+        FourCC fourCc = InputStreams.readFourCC(input);
         long size = InputStreams.readU32LE(input);
         if (size > Integer.MAX_VALUE) {
             throw new WebPException("Chunk is too large to buffer in memory: " + size);
@@ -383,24 +387,27 @@ public final class WebPSequentialParser {
         if ((size & 1L) != 0L) {
             InputStreams.skipFully(input, 1);
         }
-        return new ChunkPayload(fourCc, WebPRiffChunk.fromFourCc(fourCc), payload, size);
+        return new ChunkPayload(fourCc, WebPRiffChunk.fromFourCC(fourCc), payload, size);
     }
 
     /// Parsed VP8 dimensions.
     ///
-    /// @param width the frame width
+    /// @param width  the frame width
     /// @param height the frame height
+    @NotNullByDefault
     public record Dimensions(int width, int height) {
     }
 
     /// Parsed VP8L header data.
     ///
-    /// @param width the frame width
-    /// @param height the frame height
+    /// @param width     the frame width
+    /// @param height    the frame height
     /// @param alphaUsed whether the VP8L bitstream declares an alpha channel
+    @NotNullByDefault
     public record LosslessHeader(int width, int height, boolean alphaUsed) {
     }
 
+    @NotNullByDefault
     private record ChunkPayload(FourCC fourCc, WebPRiffChunk type, byte[] payload, long size) {
         long paddedSize() {
             return (size & 1L) == 0L ? size : size + 1L;

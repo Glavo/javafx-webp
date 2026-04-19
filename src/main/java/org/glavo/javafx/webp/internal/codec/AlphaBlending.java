@@ -15,9 +15,12 @@
  */
 package org.glavo.javafx.webp.internal.codec;
 
+import org.jetbrains.annotations.NotNullByDefault;
+
 import org.glavo.javafx.webp.internal.Argb;
 
 /// Integer alpha blending helpers based on the WebP animation reference implementation.
+@NotNullByDefault
 public final class AlphaBlending {
 
     private AlphaBlending() {

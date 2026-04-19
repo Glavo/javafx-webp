@@ -35,6 +35,8 @@
 module org.glavo.javafx.webp {
     requires javafx.graphics;
 
+    requires static org.jetbrains.annotations;
+
     // For WebPViewerApp
     requires static javafx.controls;
 

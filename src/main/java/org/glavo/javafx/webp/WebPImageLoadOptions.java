@@ -15,11 +15,14 @@
  */
 package org.glavo.javafx.webp;
 
+import org.jetbrains.annotations.NotNullByDefault;
+
 /// Immutable loading options that mirror the scaling-related parameters of the JavaFX
 /// [javafx.scene.image.Image] constructors.
 ///
 /// The options only control the dimensions and filtering used for decoded output. They never
 /// alter the source WebP metadata or animation timing.
+@NotNullByDefault
 public final class WebPImageLoadOptions {
 
     private static final WebPImageLoadOptions DEFAULTS = new Builder().build();
@@ -89,6 +92,7 @@ public final class WebPImageLoadOptions {
     }
 
     /// Builder for [WebPImageLoadOptions].
+    @NotNullByDefault
     public static final class Builder {
         private double requestedWidth;
         private double requestedHeight;

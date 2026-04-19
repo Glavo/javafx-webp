@@ -15,6 +15,9 @@
  */
 package org.glavo.javafx.webp.internal.lossy;
 
+import org.jetbrains.annotations.NotNullByDefault;
+
+@NotNullByDefault
 final class LossyTables {
 
     static final int[] SEGMENT_ID_TREE = {2, 4, 0, -1, -2, -3};

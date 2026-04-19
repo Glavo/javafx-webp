@@ -15,6 +15,8 @@
  */
 package org.glavo.javafx.webp.internal.codec;
 
+import org.jetbrains.annotations.NotNullByDefault;
+
 import java.nio.charset.StandardCharsets;
 
 /// Four-byte RIFF identifier stored as raw bytes.
@@ -22,6 +24,7 @@ import java.nio.charset.StandardCharsets;
 /// WebP chunk types, the `RIFF` container marker and the `WEBP` signature are all encoded as
 /// four ASCII bytes. Keeping them in a dedicated value type avoids repeated string allocation in
 /// the parser and makes identifier comparisons explicit.
+@NotNullByDefault
 public record FourCC(byte b0, byte b1, byte b2, byte b3) {
 
     /// Creates a FourCC from a four-character ASCII string.

@@ -15,7 +15,10 @@
  */
 package org.glavo.javafx.webp.internal.lossless;
 
+import org.jetbrains.annotations.NotNullByDefault;
+
 /// Shared lossless WebP constants lifted from the WebP lossless bitstream specification.
+@NotNullByDefault
 public final class LosslessConstants {
 
     /// Number of code-length alphabet symbols.
