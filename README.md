@@ -1,6 +1,8 @@
 # JWebP - Pure Java WebP Decoder
 
 [![codecov](https://codecov.io/gh/Glavo/jwebp/graph/badge.svg?token=CPZ7P35UK3)](https://codecov.io/gh/Glavo/jwebp)
+[![](https://img.shields.io/maven-central/v/org.glavo/webp?label=Maven%20Central)](https://search.maven.org/artifact/org.glavo/webp)
+[![javadoc](https://javadoc.io/badge2/org.glavo/webp/javadoc.svg)](https://javadoc.io/doc/org.glavo/webp)
 
 A dependency-free, pure Java WebP decoder library that supports lossless and lossy compressed WebP images, as well as animated WebP.
 
