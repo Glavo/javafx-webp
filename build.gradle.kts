@@ -48,7 +48,6 @@ dependencies {
 
             compileOnly(notation)
             testCompileOnly(notation)
-            runtimeOnly(notation)
             testRuntimeOnly(notation)
         }
     }
@@ -106,7 +105,7 @@ tasks.register<JavaExec>("run") {
     group = "application"
     description = "Runs the JavaFX WebP viewer."
     dependsOn(tasks.classes)
-    classpath = sourceSets["main"].runtimeClasspath
+    classpath = sourceSets["test"].runtimeClasspath
     mainClass.set(mainClassName)
 }
 
