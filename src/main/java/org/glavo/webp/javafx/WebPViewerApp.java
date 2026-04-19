@@ -210,10 +210,6 @@ public final class WebPViewerApp extends Application {
         try {
             WebPImage image = WebPImage.read(path);
             WebPFXImage fxImage = new WebPFXImage(image);
-            Timeline animation = fxImage.getAnimation();
-            if (animation != null) {
-                animation.play();
-            }
 
             currentPath = path;
             currentImage = image;
