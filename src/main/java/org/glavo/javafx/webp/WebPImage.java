@@ -16,6 +16,7 @@
 package org.glavo.javafx.webp;
 
 import org.jetbrains.annotations.NotNullByDefault;
+import org.jetbrains.annotations.Unmodifiable;
 
 import java.util.List;
 
@@ -158,7 +159,7 @@ public final class WebPImage {
     /// Returns all decoded frames in presentation order.
     ///
     /// @return an immutable frame list
-    public List<WebPFrame> getFrames() {
+    public @Unmodifiable List<WebPFrame> getFrames() {
         return frames;
     }
 

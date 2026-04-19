@@ -19,6 +19,7 @@ import org.jetbrains.annotations.NotNullByDefault;
 import org.jetbrains.annotations.Nullable;
 
 import org.glavo.javafx.webp.WebPMetadata;
+import org.jetbrains.annotations.Unmodifiable;
 
 import java.util.List;
 
@@ -45,6 +46,6 @@ public record ParsedWebPImage(
         long loopDurationMillis,
         WebPMetadata metadata,
         byte @Nullable [] backgroundColorHint,
-        List<ParsedFrameDescriptor> frames
+        @Unmodifiable List<ParsedFrameDescriptor> frames
 ) {
 }
