@@ -42,13 +42,14 @@ public final class WebPFrame {
     /// @param width the frame width in pixels
     /// @param height the frame height in pixels
     /// @param durationMillis the display duration in milliseconds, or `0` for still images
-    /// @param argbPixels tightly packed non-premultiplied `ARGB` pixels stored as `0xAARRGGBB`
+    /// @param argbPixels tightly packed non-premultiplied `ARGB` pixels stored as `0xAARRGGBB`;
+    ///                   ownership of the array is transferred to this frame
     WebPFrame(int width, int height, int durationMillis, int[] argbPixels) {
         this.width = width;
         this.height = height;
         this.scanlineStride = width;
         this.durationMillis = durationMillis;
-        this.argbPixels = argbPixels.clone();
+        this.argbPixels = argbPixels;
     }
 
     /// Returns the frame width.
