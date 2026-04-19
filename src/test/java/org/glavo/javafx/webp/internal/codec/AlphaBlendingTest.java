@@ -21,11 +21,37 @@ import org.glavo.javafx.webp.internal.Argb;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
+import java.util.Random;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /// Port of the ignored exhaustive test in [alpha_blending.rs](https://github.com/image-rs/image-webp/blob/f4d80bd965df2c81e65b6f43c1f70e0750bd4b0f/src/alpha_blending.rs).
 @NotNullByDefault
 final class AlphaBlendingTest {
+
+    private static void testAlphaBlending(int a1, int r1, int a2, int r2) {
+        int optimized = AlphaBlending.blend(
+                Argb.pack(a1, r1, 0, 0),
+                Argb.pack(a2, r2, 0, 0)
+        );
+        int reference = referenceBlend(
+                Argb.pack(a1, r1, 0, 0),
+                Argb.pack(a2, r2, 0, 0)
+        );
+
+        for (int i = 0; i < 4; i++) {
+            int delta = Math.abs(channel(optimized, i) - channel(reference, i));
+            assertTrue(delta <= 3,
+                    "Mismatch in results. optimized="
+                            + describe(optimized)
+                            + ", reference="
+                            + describe(reference)
+                            + ", blended values=["
+                            + r1 + ", 0, 0, " + a1 + "], ["
+                            + r2 + ", 0, 0, " + a2 + ']');
+        }
+    }
 
     @Test
     @Disabled("Takes too long to run on CI. Run this locally when changing the function.")
@@ -34,29 +60,23 @@ final class AlphaBlendingTest {
             for (int a1 = 11; a1 < 255; a1++) {
                 for (int r2 = 0; r2 < 255; r2++) {
                     for (int a2 = 11; a2 < 255; a2++) {
-                        int optimized = AlphaBlending.blend(
-                                Argb.pack(a1, r1, 0, 0),
-                                Argb.pack(a2, r2, 0, 0)
-                        );
-                        int reference = referenceBlend(
-                                Argb.pack(a1, r1, 0, 0),
-                                Argb.pack(a2, r2, 0, 0)
-                        );
-
-                        for (int i = 0; i < 4; i++) {
-                            int delta = Math.abs(channel(optimized, i) - channel(reference, i));
-                            assertTrue(delta <= 3,
-                                    "Mismatch in results. optimized="
-                                            + describe(optimized)
-                                            + ", reference="
-                                            + describe(reference)
-                                            + ", blended values=["
-                                            + r1 + ", 0, 0, " + a1 + "], ["
-                                            + r2 + ", 0, 0, " + a2 + ']');
-                        }
+                        testAlphaBlending(a1, r1, a2, r2);
                     }
                 }
             }
+        }
+    }
+
+    /// Same as [alphaBlendingOptimization], but with reduced data volume to run in CI.
+    @Test
+    void alphaBlendingOptimizationFast() {
+        var random = new Random();
+        for (int i = 0; i < 1_000_000; i++) {
+            int r1 = random.nextInt(255);
+            int a1 = random.nextInt(11, 255);
+            int r2 = random.nextInt(255);
+            int a2 = random.nextInt(11, 255);
+            testAlphaBlending(a1, r1, a2, r2);
         }
     }
 
