@@ -18,6 +18,11 @@ package org.glavo.webp;
 import org.jetbrains.annotations.NotNullByDefault;
 import org.jetbrains.annotations.Unmodifiable;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 
 /// Fully decoded WebP content.
@@ -38,6 +43,55 @@ public final class WebPImage {
     private final long loopDurationMillis;
     private final WebPMetadata metadata;
     private final List<WebPFrame> frames;
+
+    /// Reads and fully decodes a WebP stream.
+    ///
+    /// @param input the WebP byte stream
+    /// @param options scaling options that mirror JavaFX `Image` loading parameters
+    /// @return the fully decoded image
+    /// @throws WebPException if parsing or decoding fails
+    public static WebPImage read(InputStream input, WebPImageLoadOptions options) throws WebPException {
+        try (WebPImageReader reader = WebPImageReader.open(input, options)) {
+            return collect(reader);
+        } catch (IOException ex) {
+            if (ex instanceof WebPException webpException) {
+                throw webpException;
+            }
+            throw new WebPException("Failed to decode WebP stream", ex);
+        }
+    }
+
+    /// Reads and fully decodes a WebP stream using the default options.
+    ///
+    /// @param input the WebP byte stream
+    /// @return the fully decoded image
+    /// @throws WebPException if parsing or decoding fails
+    public static WebPImage read(InputStream input) throws WebPException {
+        return read(input, WebPImageLoadOptions.DEFAULT);
+    }
+
+    /// Reads and fully decodes a WebP file.
+    ///
+    /// @param path the WebP file path
+    /// @param options scaling options that mirror JavaFX `Image` loading parameters
+    /// @return the fully decoded image
+    /// @throws WebPException if the file cannot be parsed or decoded
+    public static WebPImage read(Path path, WebPImageLoadOptions options) throws WebPException {
+        try (InputStream input = Files.newInputStream(path)) {
+            return read(input, options);
+        } catch (IOException ex) {
+            throw new WebPException("Failed to decode WebP file: " + path, ex);
+        }
+    }
+
+    /// Reads and fully decodes a WebP file using the default options.
+    ///
+    /// @param path the WebP file path
+    /// @return the fully decoded image
+    /// @throws WebPException if the file cannot be parsed or decoded
+    public static WebPImage read(Path path) throws WebPException {
+        return read(path, WebPImageLoadOptions.DEFAULT);
+    }
 
     /// Creates a fully decoded WebP image.
     ///
@@ -166,5 +220,36 @@ public final class WebPImage {
     /// @return the first frame for still images or animations
     public WebPFrame getFirstFrame() {
         return frames.get(0);
+    }
+
+    private static WebPImage collect(WebPImageReader reader) throws IOException {
+        List<WebPFrame> frames;
+        if (reader.getFrameCount() == 1) {
+            //noinspection DataFlowIssue
+            frames = List.of(reader.readNextFrame());
+        } else {
+            frames = new ArrayList<>(Math.max(1, reader.getFrameCount()));
+            while (true) {
+                WebPFrame next = reader.readNextFrame();
+                if (next == null) {
+                    break;
+                }
+                frames.add(next);
+            }
+        }
+
+        return new WebPImage(
+                reader.getSourceWidth(),
+                reader.getSourceHeight(),
+                reader.getWidth(),
+                reader.getHeight(),
+                reader.hasAlpha(),
+                reader.isAnimated(),
+                reader.isLossy(),
+                reader.getLoopCount(),
+                reader.getLoopDurationMillis(),
+                reader.getMetadata(),
+                frames
+        );
     }
 }

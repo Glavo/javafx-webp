@@ -14,17 +14,17 @@
  * limitations under the License.
  */
 
-import org.glavo.webp.WebPDecoder;
+import org.glavo.webp.WebPImage;
 import org.glavo.webp.WebPImageReader;
 
-/// WebP decoding library for JavaFX.
+/// Pure Java WebP decoder library.
 ///
 /// The module exposes a public API in `org.glavo.webp` for reading static and
 /// animated WebP images, extracting metadata, and converting decoded frames to JavaFX images.
 /// Decoded frame pixels are exposed as packed non-premultiplied `ARGB` integers.
 /// Two entry points are provided:
 ///
-///   - [WebPDecoder] for eager convenience methods;
+///   - [WebPImage] for eager full-image decode;
 ///   - [WebPImageReader] for forward-only frame-by-frame decode.
 ///
 /// The decoder is implemented in pure Java. It does not depend on `java.desktop` or any

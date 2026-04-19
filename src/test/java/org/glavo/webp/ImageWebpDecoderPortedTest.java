@@ -38,7 +38,7 @@ final class ImageWebpDecoderPortedTest {
                 0x49, 0x54, 0x55, 0x50, 0x4C, 0x54, 0x59, 0x50, 0x45, 0x33, 0x37, 0x44, 0x4D, 0x46
         };
 
-        try (WebPImageReader ignored = WebPDecoder.open(new ByteArrayInputStream(bytes))) {
+        try (WebPImageReader ignored = WebPImageReader.open(new ByteArrayInputStream(bytes))) {
             // Success is acceptable. Upstream only checks that construction does not panic.
         } catch (WebPException ignored) {
             // Decoder rejection is also acceptable as long as it remains a controlled failure.
@@ -55,7 +55,7 @@ final class ImageWebpDecoderPortedTest {
                 0x20, 0x3F, (byte) 0xE4, 0x07, (byte) 0xFC, (byte) 0x80, (byte) 0xFF, (byte) 0xF8, (byte) 0xF2, 0x00, 0x00, 0x00
         };
 
-        WebPImage image = WebPDecoder.decodeAll(new ByteArrayInputStream(bytes));
+        WebPImage image = WebPImage.read(new ByteArrayInputStream(bytes));
         assertUniformOpaque(image.getFrames().get(0), 2, 2);
     }
 
@@ -69,7 +69,7 @@ final class ImageWebpDecoderPortedTest {
                 0x20, 0x3F, (byte) 0xE4, 0x07, (byte) 0xFC, (byte) 0x80, (byte) 0xFF, (byte) 0xF8, (byte) 0xF2, 0x00, 0x00, 0x00
         };
 
-        WebPImage image = WebPDecoder.decodeAll(new ByteArrayInputStream(bytes));
+        WebPImage image = WebPImage.read(new ByteArrayInputStream(bytes));
         assertUniformOpaque(image.getFrames().get(0), 3, 3);
     }
 

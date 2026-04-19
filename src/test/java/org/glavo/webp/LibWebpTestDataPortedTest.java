@@ -85,7 +85,7 @@ final class LibWebpTestDataPortedTest {
         assertTrue(resources.size() > 50, "expected a substantial libwebp PAM corpus");
 
         for (String webpFile : resources) {
-            WebPImage image = WebPDecoder.decodeAll(resource(TEST_DATA_ROOT + webpFile));
+            WebPImage image = WebPImage.read(resource(TEST_DATA_ROOT + webpFile));
             assertEquals(1, image.getFrames().size(), webpFile);
             assertFalse(image.isAnimated(), webpFile);
             assertTrue(image.getWidth() > 0, webpFile);
@@ -118,7 +118,7 @@ final class LibWebpTestDataPortedTest {
     }
 
     private static void assertFrameEquals(String webpResource, ReferenceImage expected) throws Exception {
-        WebPImage image = WebPDecoder.decodeAll(resource(webpResource));
+        WebPImage image = WebPImage.read(resource(webpResource));
         assertEquals(1, image.getFrames().size(), webpResource);
 
         WebPFrame frame = image.getFrames().get(0);
@@ -128,7 +128,7 @@ final class LibWebpTestDataPortedTest {
     }
 
     private static int[] decodePixels(String webpResource) throws Exception {
-        WebPImage image = WebPDecoder.decodeAll(resource(webpResource));
+        WebPImage image = WebPImage.read(resource(webpResource));
         assertEquals(1, image.getFrames().size(), webpResource);
         return readPixels(image.getFrames().get(0));
     }

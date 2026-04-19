@@ -87,6 +87,15 @@ public final class WebPImageReader implements AutoCloseable {
         }
     }
 
+    /// Opens a streaming reader for a generic byte stream using the default options.
+    ///
+    /// @param source the WebP byte stream
+    /// @return a new streaming reader
+    /// @throws WebPException if the stream cannot be parsed or decoded
+    public static WebPImageReader open(InputStream source) throws WebPException {
+        return open(source, WebPImageLoadOptions.DEFAULT);
+    }
+
     /// Opens a streaming reader for a file.
     ///
     /// @param path the WebP file path
@@ -114,6 +123,16 @@ public final class WebPImageReader implements AutoCloseable {
             }
             throw new WebPException("Failed to open WebP file: " + path, ex);
         }
+    }
+
+    /// Opens a streaming reader for a file using the default options.
+    ///
+    /// @param path the WebP file path
+    /// @return a new streaming reader
+    /// @throws IOException if the file cannot be opened
+    /// @throws WebPException if the file cannot be parsed or decoded
+    public static WebPImageReader open(Path path) throws IOException, WebPException {
+        return open(path, WebPImageLoadOptions.DEFAULT);
     }
 
     /// Returns the intrinsic source width.

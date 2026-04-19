@@ -59,7 +59,7 @@ final class LibWebpPortedTest {
 
     @Test
     void decodesLibWebpExampleAgainstReferencePng() throws Exception {
-        WebPImage image = WebPDecoder.decodeAll(resource(LIBWEBP_EXAMPLE_WEBP));
+        WebPImage image = WebPImage.read(resource(LIBWEBP_EXAMPLE_WEBP));
         ReferenceImage expected = readPngAsArgb(LIBWEBP_EXAMPLE_PNG);
 
         assertEquals(1, image.getFrames().size());
@@ -79,7 +79,7 @@ final class LibWebpPortedTest {
         )) {
             byte[] bytes = readResourceBytes(resource);
 
-            WebPImage eager = WebPDecoder.decodeAll(new ByteArrayInputStream(bytes));
+            WebPImage eager = WebPImage.read(new ByteArrayInputStream(bytes));
             assertFalse(eager.getFrames().isEmpty(), resource);
 
             WebPImageLoadOptions options = WebPImageLoadOptions.builder()
@@ -90,12 +90,12 @@ final class LibWebpPortedTest {
                     .build();
 
             Image firstFrameImage = new WebPFXImage(
-                    WebPDecoder.decodeAll(new ByteArrayInputStream(bytes), options).getFirstFrame()
+                    WebPImage.read(new ByteArrayInputStream(bytes), options).getFirstFrame()
             );
             assertTrue(firstFrameImage.getWidth() > 0, resource);
             assertTrue(firstFrameImage.getHeight() > 0, resource);
 
-            try (WebPImageReader reader = WebPDecoder.open(new ChunkedInputStream(bytes, 7), options)) {
+            try (WebPImageReader reader = WebPImageReader.open(new ChunkedInputStream(bytes, 7), options)) {
                 List<WebPFrame> frames = new ArrayList<>();
                 while (true) {
                     WebPFrame next = reader.readNextFrame();
@@ -120,8 +120,8 @@ final class LibWebpPortedTest {
                 WebPImageLoadOptions.builder().requestedWidth(96).requestedHeight(80).preserveRatio(true).smooth(true).build(),
                 WebPImageLoadOptions.builder().requestedWidth(96).requestedHeight(80).preserveRatio(false).smooth(false).build()
         )) {
-            WebPImage eager = WebPDecoder.decodeAll(new ByteArrayInputStream(bytes), options);
-            WebPImage streaming = WebPDecoder.decodeAll(new ChunkedInputStream(bytes, 5), options);
+            WebPImage eager = WebPImage.read(new ByteArrayInputStream(bytes), options);
+            WebPImage streaming = WebPImage.read(new ChunkedInputStream(bytes, 5), options);
 
             assertEquals(eager.getWidth(), streaming.getWidth());
             assertEquals(eager.getHeight(), streaming.getHeight());
@@ -168,7 +168,7 @@ final class LibWebpPortedTest {
 
     private static void assertAnimatedChunkedDecode(String resourceName, int expectedFrameCount) throws Exception {
         byte[] bytes = readResourceBytes(resourceName);
-        try (WebPImageReader reader = WebPDecoder.open(new ChunkedInputStream(bytes, 9))) {
+        try (WebPImageReader reader = WebPImageReader.open(new ChunkedInputStream(bytes, 9))) {
             assertTrue(reader.isAnimated(), resourceName);
             assertEquals(expectedFrameCount, reader.getFrameCount(), resourceName);
 
@@ -195,13 +195,13 @@ final class LibWebpPortedTest {
                 .smooth(true)
                 .build();
 
-        assertOnlyWebPException(() -> WebPDecoder.decodeAll(new ByteArrayInputStream(data)));
-        assertOnlyWebPException(() -> WebPDecoder.decodeAll(new ChunkedInputStream(data, 3), options));
+        assertOnlyWebPException(() -> WebPImage.read(new ByteArrayInputStream(data)));
+        assertOnlyWebPException(() -> WebPImage.read(new ChunkedInputStream(data, 3), options));
         assertOnlyWebPException(() -> new WebPFXImage(
-                WebPDecoder.decodeAll(new ByteArrayInputStream(data), options).getFirstFrame()
+                WebPImage.read(new ByteArrayInputStream(data), options).getFirstFrame()
         ));
         assertOnlyWebPException(() -> {
-            try (WebPImageReader reader = WebPDecoder.open(new ChunkedInputStream(data, 5), options)) {
+            try (WebPImageReader reader = WebPImageReader.open(new ChunkedInputStream(data, 5), options)) {
                 while (reader.readNextFrame() != null) {
                     // Consume until exhausted or a WebPException is raised.
                 }

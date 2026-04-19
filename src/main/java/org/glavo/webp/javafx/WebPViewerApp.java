@@ -16,7 +16,7 @@
 package org.glavo.webp.javafx;
 
 import javafx.scene.input.KeyCode;
-import org.glavo.webp.WebPDecoder;
+import org.glavo.webp.WebPImage;
 import org.jetbrains.annotations.NotNullByDefault;
 import org.jetbrains.annotations.Nullable;
 
@@ -50,7 +50,7 @@ import java.util.Objects;
 ///
 /// The application is intentionally lightweight and uses the public decoder API directly.
 /// Static images are displayed immediately and animated WebP files are played back in an
-/// [ImageView] according to the frame durations exposed by [WebPDecoder].
+/// [ImageView] according to the frame durations exposed by [WebPImage].
 @NotNullByDefault
 public final class WebPViewerApp extends Application {
 
@@ -61,7 +61,7 @@ public final class WebPViewerApp extends Application {
 
     private @UnknownNullability Stage stage;
     private @Nullable Path currentPath;
-    private @Nullable org.glavo.webp.WebPImage currentImage;
+    private @Nullable WebPImage currentImage;
     private @Nullable WebPFXImage currentFxImage;
     private @Nullable ScrollPane scrollPane;
     private @Nullable Point2D dragAnchor;
@@ -208,7 +208,7 @@ public final class WebPViewerApp extends Application {
         stopPlayback();
 
         try {
-            org.glavo.webp.WebPImage image = WebPDecoder.decodeAll(path);
+            WebPImage image = WebPImage.read(path);
             WebPFXImage fxImage = new WebPFXImage(image);
             Timeline animation = fxImage.getAnimation();
             if (animation != null) {
@@ -297,7 +297,7 @@ public final class WebPViewerApp extends Application {
         return Math.max(0.0, Math.min(1.0, value));
     }
 
-    private String buildStatusText(Path path, org.glavo.webp.WebPImage image) {
+    private String buildStatusText(Path path, WebPImage image) {
         StringBuilder text = new StringBuilder();
         text.append(path.getFileName())
                 .append(" | ")

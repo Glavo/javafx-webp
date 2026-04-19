@@ -25,7 +25,7 @@ This project was ported with Codex assistance from [image-rs/image-webp](https:/
 Decode a whole image at once:
 
 ```java
-WebPImage image = WebPDecoder.decodeAll(Path.of("sample.webp"));
+WebPImage image = WebPImage.read(Path.of("sample.webp"));
 System.out.println(image.getWidth() + "x" + image.getHeight());
 System.out.println("frames = " + image.getFrames().size());
 ```
@@ -34,7 +34,7 @@ Create a JavaFX image from decoded WebP content:
 
 ```java
 try (InputStream input = Files.newInputStream(Path.of("/image.webp"))) {
-    WebPFXImage image = new WebPFXImage(WebPDecoder.decodeAll(input, options), new WebPImageLoadOptions(320, 240, true, true));
+    WebPFXImage image = new WebPFXImage(WebPImage.read(input, options));
 }
 ```
 
@@ -42,7 +42,7 @@ Stream frames from an animated WebP:
 
 ```java
 try (InputStream input = Files.newInputStream(Path.of("/animated.webp"));
-     WebPImageReader reader = WebPDecoder.open(input)) {
+     WebPImageReader reader = WebPImageReader.open(input)) {
     while (true) {
         WebPFrame frame = reader.readNextFrame();
         if (frame == null) {

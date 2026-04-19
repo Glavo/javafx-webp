@@ -37,7 +37,7 @@ final class WebPDecoderTest {
 
     @Test
     void decodesStaticLossyImage() throws Exception {
-        WebPImage image = WebPDecoder.decodeAll(resource("images/gallery1-1.webp"));
+        WebPImage image = WebPImage.read(resource("images/gallery1-1.webp"));
         assertEquals(1, image.getFrames().size());
         assertFalse(image.isAnimated());
         assertTrue(image.isLossy());
@@ -48,7 +48,7 @@ final class WebPDecoderTest {
 
     @Test
     void decodesStaticLosslessImageWithAlpha() throws Exception {
-        WebPImage image = WebPDecoder.decodeAll(resource("images/gallery2-1_webp_a.webp"));
+        WebPImage image = WebPImage.read(resource("images/gallery2-1_webp_a.webp"));
         assertEquals(1, image.getFrames().size());
         assertFalse(image.isAnimated());
         assertTrue(image.hasAlpha());
@@ -57,14 +57,14 @@ final class WebPDecoderTest {
 
     @Test
     void decodesTinyRegressionImage() throws Exception {
-        WebPImage image = WebPDecoder.decodeAll(resource("images/regression-tiny.webp"));
+        WebPImage image = WebPImage.read(resource("images/regression-tiny.webp"));
         assertEquals(1, image.getFrames().size());
         assertFrameEquals(image.getFrames().get(0), "reference/regression-tiny.png");
     }
 
     @Test
     void streamsAnimatedLosslessFrames() throws Exception {
-        try (WebPImageReader reader = WebPDecoder.open(resource("images/animated-random_lossless.webp"))) {
+        try (WebPImageReader reader = WebPImageReader.open(resource("images/animated-random_lossless.webp"))) {
             assertTrue(reader.isAnimated());
             assertEquals(3, reader.getFrameCount());
             assertTrue(reader.getLoopDurationMillis() > 0);
@@ -92,7 +92,7 @@ final class WebPDecoderTest {
 
     @Test
     void streamsAnimatedLossyFramesWithinTolerance() throws Exception {
-        try (WebPImageReader reader = WebPDecoder.open(resource("images/animated-random_lossy.webp"))) {
+        try (WebPImageReader reader = WebPImageReader.open(resource("images/animated-random_lossy.webp"))) {
             assertTrue(reader.isAnimated());
             assertTrue(reader.isLossy());
             assertEquals(4, reader.getFrameCount());
@@ -131,10 +131,10 @@ final class WebPDecoderTest {
                 .smooth(false)
                 .build();
 
-        WebPImage eager = WebPDecoder.decodeAll(resource("images/gallery2-1_webp_ll.webp"), options);
+        WebPImage eager = WebPImage.read(resource("images/gallery2-1_webp_ll.webp"), options);
         assertEquals(1, eager.getFrames().size());
 
-        try (WebPImageReader reader = WebPDecoder.open(resource("images/gallery2-1_webp_ll.webp"), options)) {
+        try (WebPImageReader reader = WebPImageReader.open(resource("images/gallery2-1_webp_ll.webp"), options)) {
             WebPFrame streamed = reader.readNextFrame();
             assertNotNull(streamed);
             assertFramePixelEquals(streamed, eager.getFrames().get(0), 0);
@@ -152,10 +152,10 @@ final class WebPDecoderTest {
                 .smooth(false)
                 .build();
 
-        WebPImage eager = WebPDecoder.decodeAll(resource("images/animated-random_lossless.webp"), options);
+        WebPImage eager = WebPImage.read(resource("images/animated-random_lossless.webp"), options);
         assertEquals(3, eager.getFrames().size());
 
-        try (WebPImageReader reader = WebPDecoder.open(resource("images/animated-random_lossless.webp"), options)) {
+        try (WebPImageReader reader = WebPImageReader.open(resource("images/animated-random_lossless.webp"), options)) {
             assertTrue(reader.isAnimated());
             assertEquals(31, reader.getWidth());
             assertEquals(17, reader.getHeight());
@@ -190,8 +190,8 @@ final class WebPDecoderTest {
                 .smooth(true)
                 .build();
 
-        int[] nearestPixels = WebPDecoder.decodeAll(resource("images/gallery2-1_webp_ll.webp"), nearest).getFrames().get(0).getArgbArray();
-        int[] smoothPixels = WebPDecoder.decodeAll(resource("images/gallery2-1_webp_ll.webp"), smooth).getFrames().get(0).getArgbArray();
+        int[] nearestPixels = WebPImage.read(resource("images/gallery2-1_webp_ll.webp"), nearest).getFrames().get(0).getArgbArray();
+        int[] smoothPixels = WebPImage.read(resource("images/gallery2-1_webp_ll.webp"), smooth).getFrames().get(0).getArgbArray();
 
         assertEquals(nearestPixels.length, smoothPixels.length);
         assertFalse(Arrays.equals(nearestPixels, smoothPixels), "smooth filtering should not match nearest-neighbor output on a non-uniform image");
@@ -207,7 +207,7 @@ final class WebPDecoderTest {
                 .smooth(true)
                 .build();
 
-        WebPFrame frame = WebPDecoder.decodeAll(resource("images/gallery2-1_webp_ll.webp"), options).getFrames().get(0);
+        WebPFrame frame = WebPImage.read(resource("images/gallery2-1_webp_ll.webp"), options).getFrames().get(0);
         var image = new WebPFXImage(frame);
         assertTrue(image.getWidth() > 0);
         assertTrue(image.getHeight() > 0);
@@ -222,7 +222,7 @@ final class WebPDecoderTest {
                 .smooth(true)
                 .build();
 
-        WebPFrame frame = WebPDecoder.decodeAll(resource("images/gallery2-1_webp_ll.webp"), options).getFrames().get(0);
+        WebPFrame frame = WebPImage.read(resource("images/gallery2-1_webp_ll.webp"), options).getFrames().get(0);
         Image image = new WebPFXImage(frame);
         PixelReader reader = image.getPixelReader();
         assertNotNull(reader);
@@ -244,7 +244,7 @@ final class WebPDecoderTest {
 
     @Test
     void javaFxImageFromFrameRoundTripsArgbPixels() throws Exception {
-        WebPFrame frame = WebPDecoder.decodeAll(resource("images/gallery2-1_webp_a.webp")).getFrames().get(0);
+        WebPFrame frame = WebPImage.read(resource("images/gallery2-1_webp_a.webp")).getFrames().get(0);
         var image = new WebPFXImage(frame);
         var reader = image.getPixelReader();
         assertNotNull(reader);
@@ -268,7 +268,7 @@ final class WebPDecoderTest {
     @Test
     void rejectsInvalidContainer() {
         byte[] invalid = "not a webp".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
-        assertThrows(WebPException.class, () -> WebPDecoder.decodeAll(new ByteArrayInputStream(invalid)));
+        assertThrows(WebPException.class, () -> WebPImage.read(new ByteArrayInputStream(invalid)));
     }
 
     private static void assertScaledDimensions(
@@ -286,7 +286,7 @@ final class WebPDecoderTest {
                 .smooth(smooth)
                 .build();
 
-        WebPImage image = WebPDecoder.decodeAll(resource(webpResource), options);
+        WebPImage image = WebPImage.read(resource(webpResource), options);
         try (InputStream reference = resource(pngReferenceResource)) {
             Image expected = new Image(reference, requestedWidth, requestedHeight, preserveRatio, smooth);
             assertEquals(expected.getWidth(), image.getWidth(), 0.0001);
