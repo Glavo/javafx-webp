@@ -149,14 +149,21 @@ public final class WebPDecoder {
     }
 
     private static WebPImage collect(WebPImageReader reader) throws IOException {
-        List<WebPFrame> frames = new ArrayList<>(Math.max(1, reader.getFrameCount()));
-        while (true) {
-            WebPFrame next = reader.readNextFrame();
-            if (next == null) {
-                break;
+        List<WebPFrame> frames;
+        if (reader.getFrameCount() == 1) {
+            //noinspection DataFlowIssue
+            frames = List.of(reader.readNextFrame());
+        } else {
+            frames = new ArrayList<>(Math.max(1, reader.getFrameCount()));
+            while (true) {
+                WebPFrame next = reader.readNextFrame();
+                if (next == null) {
+                    break;
+                }
+                frames.add(next);
             }
-            frames.add(next);
         }
+
         return new WebPImage(
                 reader.getSourceWidth(),
                 reader.getSourceHeight(),
