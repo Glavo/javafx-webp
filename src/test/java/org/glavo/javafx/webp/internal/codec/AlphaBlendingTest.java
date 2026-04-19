@@ -70,7 +70,7 @@ final class AlphaBlendingTest {
     /// Same as [alphaBlendingOptimization], but with reduced data volume to run in CI.
     @Test
     void alphaBlendingOptimizationFast() {
-        var random = new Random();
+        var random = new Random(0);
         for (int i = 0; i < 1_000_000; i++) {
             int r1 = random.nextInt(255);
             int a1 = random.nextInt(11, 255);
@@ -78,6 +78,30 @@ final class AlphaBlendingTest {
             int a2 = random.nextInt(11, 255);
             testAlphaBlending(a1, r1, a2, r2);
         }
+    }
+
+    @Test
+    void alphaBlendingHandlesFullyTransparentPixels() {
+        int transparentSource = Argb.pack(0, 17, 34, 51);
+        int transparentDestination = Argb.pack(0, 68, 85, 102);
+        int visibleSource = Argb.pack(128, 120, 90, 60);
+        int visibleDestination = Argb.pack(192, 25, 50, 75);
+
+        assertEquals(
+                visibleDestination,
+                AlphaBlending.blend(transparentSource, visibleDestination),
+                "a fully transparent source must leave the destination unchanged"
+        );
+        assertEquals(
+                visibleSource,
+                AlphaBlending.blend(visibleSource, transparentDestination),
+                "a fully transparent destination must be replaced by the source"
+        );
+        assertEquals(
+                transparentDestination,
+                AlphaBlending.blend(transparentSource, transparentDestination),
+                "when both pixels are transparent the destination short-circuit should win"
+        );
     }
 
     private static int referenceBlend(int buffer, int canvas) {
