@@ -183,7 +183,7 @@ public final class ByteArrayReader {
     }
 
     private void require(int bytes) throws WebPException {
-        if (bytes < 0 || position + bytes > data.length) {
+        if (bytes < 0 || bytes > data.length - position) {
             throw new WebPException("Unexpected end of WebP data");
         }
     }

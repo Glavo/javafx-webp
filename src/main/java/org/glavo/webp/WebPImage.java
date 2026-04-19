@@ -68,6 +68,8 @@ public final class WebPImage {
     public static WebPImage read(Path path, WebPImageLoadOptions options) throws WebPException {
         try (InputStream input = new BufferedInputStream(Files.newInputStream(path))) {
             return read(input, options);
+        } catch (WebPException ex) {
+            throw ex;
         } catch (IOException ex) {
             throw new WebPException("Failed to decode WebP file: " + path, ex);
         }

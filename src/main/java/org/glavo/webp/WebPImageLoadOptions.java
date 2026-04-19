@@ -128,7 +128,7 @@ public record WebPImageLoadOptions(
 
         /// Sets whether the higher-quality scaling filter should be used.
         ///
-        /// @param smooth`true` for higher-quality filtering, `false` for faster scaling
+        /// @param smooth `true` for higher-quality filtering, `false` for faster scaling
         /// @return this builder
         public Builder smooth(boolean smooth) {
             this.smooth = smooth;
