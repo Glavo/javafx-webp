@@ -15,6 +15,7 @@
  */
 package org.glavo.javafx.webp;
 
+import javafx.scene.input.KeyCode;
 import org.jetbrains.annotations.NotNullByDefault;
 import org.jetbrains.annotations.Nullable;
 
@@ -22,11 +23,15 @@ import javafx.animation.PauseTransition;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
+import javafx.geometry.Point2D;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.ToolBar;
+import javafx.scene.input.MouseButton;
+import javafx.scene.input.TransferMode;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
@@ -34,12 +39,14 @@ import javafx.scene.layout.StackPane;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.util.Duration;
+import org.jetbrains.annotations.UnknownNullability;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /// Simple JavaFX viewer for local WebP files.
 ///
@@ -50,11 +57,16 @@ import java.util.List;
 public final class WebPViewerApp extends Application {
 
     private final ImageView imageView = new ImageView();
-    private final Label statusLabel = new Label("Open a WebP file to start.");
+    private final Label statusLabel = new Label("Open or drop a WebP file to start.");
     private final FileChooser fileChooser = createFileChooser();
+    private final StackPane imagePane = new StackPane(imageView);
 
-    private @Nullable Stage stage;
+    private @UnknownNullability Stage stage;
     private @Nullable Playback playback;
+    private @Nullable ScrollPane scrollPane;
+    private @Nullable Point2D dragAnchor;
+    private double dragStartHValue;
+    private double dragStartVValue;
 
     /// Launches the viewer application.
     ///
@@ -77,21 +89,22 @@ public final class WebPViewerApp extends Application {
         openButton.setOnAction(event -> openFileChooser());
 
         ToolBar toolBar = new ToolBar(openButton, statusLabel);
-        ScrollPane scrollPane = new ScrollPane(new StackPane(imageView));
+        ScrollPane scrollPane = new ScrollPane(imagePane);
         scrollPane.setFitToHeight(true);
         scrollPane.setFitToWidth(true);
-        scrollPane.setPannable(true);
+        scrollPane.setPannable(false);
+        this.scrollPane = scrollPane;
+        installDragPanHandlers();
 
         BorderPane root = new BorderPane(scrollPane);
         root.setTop(toolBar);
         BorderPane.setMargin(scrollPane, new Insets(8));
 
         Scene scene = new Scene(root, 960, 720);
+        installFileDropHandlers(scene);
         scene.setOnKeyPressed(event -> {
-            switch (event.getCode()) {
-                case O -> openFileChooser();
-                default -> {
-                }
+            if (Objects.requireNonNull(event.getCode()) == KeyCode.O) {
+                openFileChooser();
             }
         });
 
@@ -111,6 +124,72 @@ public final class WebPViewerApp extends Application {
     @Override
     public void stop() {
         stopPlayback();
+    }
+
+    private void installFileDropHandlers(Scene scene) {
+        scene.setOnDragOver(event -> {
+            if (event.getDragboard().hasFiles() && findDroppedWebPFile(event.getDragboard().getFiles()) != null) {
+                event.acceptTransferModes(TransferMode.COPY);
+            }
+            event.consume();
+        });
+        scene.setOnDragDropped(event -> {
+            Path path = findDroppedWebPFile(event.getDragboard().getFiles());
+            if (path != null) {
+                load(path);
+                event.setDropCompleted(true);
+            } else {
+                event.setDropCompleted(false);
+            }
+            event.consume();
+        });
+    }
+
+    private void installDragPanHandlers() {
+        imagePane.setOnMousePressed(event -> {
+            if (event.getButton() != MouseButton.PRIMARY || scrollPane == null || imageView.getImage() == null) {
+                return;
+            }
+            if (!canPanImage()) {
+                return;
+            }
+
+            dragAnchor = new Point2D(event.getSceneX(), event.getSceneY());
+            dragStartHValue = scrollPane.getHvalue();
+            dragStartVValue = scrollPane.getVvalue();
+            imagePane.setStyle("-fx-cursor: closed-hand;");
+            event.consume();
+        });
+        imagePane.setOnMouseDragged(event -> {
+            if (dragAnchor == null || scrollPane == null) {
+                return;
+            }
+
+            double contentWidth = imagePane.getLayoutBounds().getWidth();
+            double contentHeight = imagePane.getLayoutBounds().getHeight();
+            double viewportWidth = scrollPane.getViewportBounds().getWidth();
+            double viewportHeight = scrollPane.getViewportBounds().getHeight();
+
+            double dx = event.getSceneX() - dragAnchor.getX();
+            double dy = event.getSceneY() - dragAnchor.getY();
+
+            if (contentWidth > viewportWidth) {
+                double delta = dx / (contentWidth - viewportWidth);
+                scrollPane.setHvalue(clamp(dragStartHValue - delta));
+            }
+            if (contentHeight > viewportHeight) {
+                double delta = dy / (contentHeight - viewportHeight);
+                scrollPane.setVvalue(clamp(dragStartVValue - delta));
+            }
+
+            event.consume();
+        });
+        imagePane.setOnMouseReleased(event -> finishDragPan());
+        imagePane.setOnMouseExited(event -> {
+            if (!event.isPrimaryButtonDown()) {
+                finishDragPan();
+            }
+        });
     }
 
     private void openFileChooser() {
@@ -144,6 +223,7 @@ public final class WebPViewerApp extends Application {
             imageView.setImage(null);
             statusLabel.setText("Failed to open " + path.getFileName() + ": " + ex.getMessage());
             stage.setTitle("WebP Viewer");
+            showLoadError(path, ex);
         }
     }
 
@@ -162,6 +242,45 @@ public final class WebPViewerApp extends Application {
             }
         }
         return null;
+    }
+
+    private boolean canPanImage() {
+        if (scrollPane == null) {
+            return false;
+        }
+        return imagePane.getLayoutBounds().getWidth() > scrollPane.getViewportBounds().getWidth()
+                || imagePane.getLayoutBounds().getHeight() > scrollPane.getViewportBounds().getHeight();
+    }
+
+    private void finishDragPan() {
+        dragAnchor = null;
+        imagePane.setStyle("");
+    }
+
+    private void showLoadError(Path path, IOException ex) {
+        if (stage == null) {
+            return;
+        }
+
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.initOwner(stage);
+        alert.setHeaderText("Failed to open WebP image");
+        alert.setContentText(path.getFileName() + ": " + ex.getMessage());
+        alert.show();
+    }
+
+    private static @Nullable Path findDroppedWebPFile(List<java.io.File> files) {
+        for (java.io.File file : files) {
+            Path path = file.toPath();
+            if (Files.isRegularFile(path) && path.getFileName().toString().toLowerCase().endsWith(".webp")) {
+                return path;
+            }
+        }
+        return null;
+    }
+
+    private static double clamp(double value) {
+        return Math.max(0.0, Math.min(1.0, value));
     }
 
     private String buildStatusText(Playback playback) {
