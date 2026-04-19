@@ -15,80 +15,45 @@
  */
 package org.glavo.javafx.webp;
 
+import javafx.scene.image.Image;
 import org.jetbrains.annotations.NotNullByDefault;
 
 /// Immutable loading options that mirror the scaling-related parameters of the JavaFX
-/// [javafx.scene.image.Image] constructors.
+/// [Image] constructors.
 ///
 /// The options only control the dimensions and filtering used for decoded output. They never
 /// alter the source WebP metadata or animation timing.
+///
+/// @param requestedWidth  the requested bounding-box width. If this value is less than or equal to zero, the intrinsic width is used.
+/// @param requestedHeight the requested bounding-box height. If this value is less than or equal to zero, the intrinsic height is used.
+/// @param preserveRatio   whether the source aspect ratio should be preserved when fitting into the requested width/height bounding box.
+/// @param smooth          whether a higher-quality scaling filter should be used.
 @NotNullByDefault
-public final class WebPImageLoadOptions {
+public record WebPImageLoadOptions(
+        double requestedWidth,
+        double requestedHeight,
+        boolean preserveRatio,
+        boolean smooth) {
 
-    private static final WebPImageLoadOptions DEFAULTS = new Builder().build();
-
-    private final double requestedWidth;
-    private final double requestedHeight;
-    private final boolean preserveRatio;
-    private final boolean smooth;
-
-    private WebPImageLoadOptions(double requestedWidth, double requestedHeight, boolean preserveRatio, boolean smooth) {
-        this.requestedWidth = requestedWidth;
-        this.requestedHeight = requestedHeight;
-        this.preserveRatio = preserveRatio;
-        this.smooth = smooth;
+    /// Creates a new option with the given requested dimensions.
+    ///
+    /// @param requestedWidth  the requested bounding-box width. If this value is less than or equal to zero, the intrinsic width is used.
+    /// @param requestedHeight the requested bounding-box height. If this value is less than or equal to zero, the intrinsic height is used.
+    public WebPImageLoadOptions(double requestedWidth, double requestedHeight) {
+        this(requestedWidth, requestedHeight, false, true);
     }
 
-    /// Returns the default options.
+    /// The default options.
     ///
     /// The default configuration requests the intrinsic image size, does not preserve ratio
     /// because no explicit bounding box is provided, and enables smooth filtering.
-    ///
-    /// @return the shared default options instance
-    public static WebPImageLoadOptions defaults() {
-        return DEFAULTS;
-    }
+    public static final WebPImageLoadOptions DEFAULT = new WebPImageLoadOptions(0, 0);
 
     /// Creates a new builder.
     ///
     /// @return a builder initialized with default option values
     public static Builder builder() {
         return new Builder();
-    }
-
-    /// Returns the requested bounding-box width.
-    ///
-    /// A value less than or equal to zero means that the intrinsic source width is used.
-    ///
-    /// @return the requested width in JavaFX coordinates
-    public double getRequestedWidth() {
-        return requestedWidth;
-    }
-
-    /// Returns the requested bounding-box height.
-    ///
-    /// A value less than or equal to zero means that the intrinsic source height is used.
-    ///
-    /// @return the requested height in JavaFX coordinates
-    public double getRequestedHeight() {
-        return requestedHeight;
-    }
-
-    /// Returns whether the source aspect ratio should be preserved when fitting into the requested
-    /// width/height bounding box.
-    ///
-    /// @return `true` if the source aspect ratio must be preserved
-    public boolean isPreserveRatio() {
-        return preserveRatio;
-    }
-
-    /// Returns whether a higher-quality scaling filter should be used.
-    ///
-    /// When scaling is not required this flag has no practical effect.
-    ///
-    /// @return `true` for higher-quality filtering, `false` for faster scaling
-    public boolean isSmooth() {
-        return smooth;
     }
 
     /// Builder for [WebPImageLoadOptions].

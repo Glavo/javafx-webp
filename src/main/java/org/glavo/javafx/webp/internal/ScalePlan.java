@@ -42,10 +42,10 @@ public record ScalePlan(
         int targetWidth = sourceWidth;
         int targetHeight = sourceHeight;
 
-        double requestedWidth = options.getRequestedWidth();
-        double requestedHeight = options.getRequestedHeight();
+        double requestedWidth = options.requestedWidth();
+        double requestedHeight = options.requestedHeight();
 
-        if (options.isPreserveRatio()) {
+        if (options.preserveRatio()) {
             if (requestedWidth > 0 && requestedHeight > 0) {
                 double scale = Math.min(requestedWidth / sourceWidth, requestedHeight / sourceHeight);
                 targetWidth = clampDimension(sourceWidth * scale);
@@ -68,7 +68,7 @@ public record ScalePlan(
             }
         }
 
-        return new ScalePlan(sourceWidth, sourceHeight, targetWidth, targetHeight, options.isSmooth());
+        return new ScalePlan(sourceWidth, sourceHeight, targetWidth, targetHeight, options.smooth());
     }
 
     private static int clampDimension(double value) {

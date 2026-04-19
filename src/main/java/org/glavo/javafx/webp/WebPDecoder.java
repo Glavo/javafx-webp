@@ -52,7 +52,7 @@ public final class WebPDecoder {
     /// @return a streaming reader positioned before the first frame
     /// @throws WebPException if the stream cannot be parsed or a decoder cannot be created
     public static WebPImageReader open(InputStream input) throws WebPException {
-        return open(input, WebPImageLoadOptions.defaults());
+        return open(input, WebPImageLoadOptions.DEFAULT);
     }
 
     /// Opens a forward-only image reader for a file on disk.
@@ -75,7 +75,7 @@ public final class WebPDecoder {
     /// @return a streaming reader positioned before the first frame
     /// @throws WebPException if the file cannot be opened or parsed
     public static WebPImageReader open(Path path) throws WebPException {
-        return open(path, WebPImageLoadOptions.defaults());
+        return open(path, WebPImageLoadOptions.DEFAULT);
     }
 
     /// Decodes the entire stream into an immutable [WebPImage].
@@ -101,7 +101,7 @@ public final class WebPDecoder {
     /// @return the fully decoded image
     /// @throws WebPException if parsing or decoding fails
     public static WebPImage decodeAll(InputStream input) throws WebPException {
-        return decodeAll(input, WebPImageLoadOptions.defaults());
+        return decodeAll(input, WebPImageLoadOptions.DEFAULT);
     }
 
     /// Decodes the entire file into an immutable [WebPImage].
@@ -124,7 +124,7 @@ public final class WebPDecoder {
     /// @return the fully decoded image
     /// @throws WebPException if the file cannot be parsed or decoded
     public static WebPImage decodeAll(Path path) throws WebPException {
-        return decodeAll(path, WebPImageLoadOptions.defaults());
+        return decodeAll(path, WebPImageLoadOptions.DEFAULT);
     }
 
     /// Decodes only the first frame and converts it to a JavaFX image.
