@@ -33,7 +33,7 @@ import org.glavo.webp.WebPImageReader;
 /// [javafx.scene.image.Image].
 ///
 /// `javafx.controls` is only required for the bundled
-/// [WebPViewerApp] demo application, so the dependency remains
+/// [org.glavo.webp.javafx.WebPViewerApp] demo application, so the dependency remains
 /// optional at compile time.
 module org.glavo.webp {
     requires static org.jetbrains.annotations;
