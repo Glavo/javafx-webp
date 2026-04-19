@@ -26,7 +26,7 @@ Gradle:
 
 ```kotlin
 dependencies {
-    implementation("org.glavo:webp:0.1.0")
+    implementation("org.glavo:webp:0.2.0")
 }
 ```
 
@@ -37,7 +37,7 @@ Maven:
 <dependency>
     <groupId>org.glavo</groupId>
     <artifactId>webp</artifactId>
-    <version>0.1.0</version>
+    <version>0.2.0</version>
 </dependency>
 ```
 
