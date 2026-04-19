@@ -28,7 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 final class AlphaBlendingTest {
 
     @Test
-    @Disabled("Exhaustive optimization check mirrored from upstream #[ignore] test")
+    @Disabled("Takes too long to run on CI. Run this locally when changing the function.")
     void alphaBlendingOptimization() {
         for (int r1 = 0; r1 < 255; r1++) {
             for (int a1 = 11; a1 < 255; a1++) {
