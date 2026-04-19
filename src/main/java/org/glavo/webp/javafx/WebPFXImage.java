@@ -82,8 +82,17 @@ public final class WebPFXImage extends WritableImage {
 
         Timeline currentTimeline = timeline;
         if (currentTimeline == null) {
-            currentTimeline = createTimeline(loopCount);
-            timeline = currentTimeline;
+            currentTimeline = new Timeline();
+            currentTimeline.setCycleCount(loopCount == 0 ? Animation.INDEFINITE : Math.max(1, loopCount));
+            currentTimeline.getKeyFrames().setAll(createKeyFrames());
+            Timeline timelineRef = currentTimeline;
+            currentTimeline.currentTimeProperty().addListener((observable, oldValue, newValue) -> {
+                if (timelineRef.getStatus() != Animation.Status.RUNNING) {
+                    renderFrameAt(newValue);
+                }
+            });
+
+            this.timeline = currentTimeline;
         }
         return currentTimeline;
     }
@@ -100,16 +109,6 @@ public final class WebPFXImage extends WritableImage {
         );
     }
 
-    private Timeline createTimeline(int loopCount) {
-        Timeline timeline = new Timeline();
-        timeline.setCycleCount(frames.size() > 1
-                ? (loopCount == 0 ? Animation.INDEFINITE : Math.max(1, loopCount))
-                : 1);
-        timeline.getKeyFrames().setAll(createKeyFrames());
-        timeline.currentTimeProperty().addListener((observable, oldValue, newValue) -> renderFrameAt(newValue));
-        return timeline;
-    }
-
     private List<KeyFrame> createKeyFrames() {
         if (frames.size() <= 1) {
             return List.of();
@@ -118,8 +117,9 @@ public final class WebPFXImage extends WritableImage {
         List<KeyFrame> keyFrames = new ArrayList<>(frames.size() + 1);
         long totalDurationMillis = 0L;
         for (int i = 0; i < frames.size(); i++) {
+            int frameIndex = i;
+            keyFrames.add(new KeyFrame(Duration.millis(frameStartMillis[i]), event -> renderFrame(frameIndex)));
             WebPFrame frame = frames.get(i);
-            keyFrames.add(new KeyFrame(Duration.millis(frameStartMillis[i])));
             totalDurationMillis = frameStartMillis[i] + normalizedDurationMillis(frame);
         }
 
@@ -147,7 +147,10 @@ public final class WebPFXImage extends WritableImage {
             return;
         }
 
-        int frameIndex = frameIndexAt(time.toMillis());
+        renderFrame(frameIndexAt(time.toMillis()));
+    }
+
+    private void renderFrame(int frameIndex) {
         if (frameIndex != renderedFrameIndex) {
             renderedFrameIndex = frameIndex;
             writeFrame(frames.get(frameIndex));
