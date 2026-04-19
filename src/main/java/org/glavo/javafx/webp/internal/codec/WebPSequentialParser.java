@@ -48,14 +48,14 @@ public final class WebPSequentialParser {
     /// @return the parsed container data
     /// @throws IOException if the stream is truncated or malformed
     public static ParsedWebPImage parse(InputStream input) throws IOException {
-        String riff = InputStreams.readFourCc(input);
-        if (!"RIFF".equals(riff)) {
+        FourCC riff = InputStreams.readFourCc(input);
+        if (!WebPRiffChunk.RIFF.fourCC().equals(riff)) {
             throw new WebPException("Missing RIFF container header");
         }
 
         long riffSize = InputStreams.readU32LE(input);
-        String webp = InputStreams.readFourCc(input);
-        if (!"WEBP".equals(webp)) {
+        FourCC webp = InputStreams.readFourCc(input);
+        if (!WebPRiffChunk.WEBP.fourCC().equals(webp)) {
             throw new WebPException("Missing WEBP signature");
         }
 
@@ -272,7 +272,7 @@ public final class WebPSequentialParser {
         byte[] imageChunk = null;
         boolean lossless = false;
         while (frame.remaining() > 0) {
-            String fourCc = frame.readFourCc();
+            FourCC fourCc = frame.readFourCc();
             WebPRiffChunk type = WebPRiffChunk.fromFourCc(fourCc);
             long chunkSize = frame.readU32LE();
             if (chunkSize > Integer.MAX_VALUE) {
@@ -374,7 +374,7 @@ public final class WebPSequentialParser {
     }
 
     private static ChunkPayload readChunk(InputStream input) throws IOException {
-        String fourCc = InputStreams.readFourCc(input);
+        FourCC fourCc = InputStreams.readFourCc(input);
         long size = InputStreams.readU32LE(input);
         if (size > Integer.MAX_VALUE) {
             throw new WebPException("Chunk is too large to buffer in memory: " + size);
@@ -401,7 +401,7 @@ public final class WebPSequentialParser {
     public record LosslessHeader(int width, int height, boolean alphaUsed) {
     }
 
-    private record ChunkPayload(String fourCc, WebPRiffChunk type, byte[] payload, long size) {
+    private record ChunkPayload(FourCC fourCc, WebPRiffChunk type, byte[] payload, long size) {
         long paddedSize() {
             return (size & 1L) == 0L ? size : size + 1L;
         }

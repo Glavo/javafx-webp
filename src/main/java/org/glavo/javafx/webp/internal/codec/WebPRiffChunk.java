@@ -28,31 +28,31 @@ public enum WebPRiffChunk {
     ICCP("ICCP"),
     EXIF("EXIF"),
     XMP("XMP "),
-    UNKNOWN("");
+    UNKNOWN(null);
 
-    private final String fourCc;
+    private final FourCC fourCc;
 
-    WebPRiffChunk(String fourCc) {
-        this.fourCc = fourCc;
+    WebPRiffChunk(String fourCC) {
+        this.fourCc = fourCC != null ? FourCC.of(fourCC) : null;
     }
 
-    /// Maps a FourCC string to its chunk type.
+    /// Maps a FourCC identifier to its chunk type.
     ///
-    /// @param fourCc the ASCII chunk identifier
+    /// @param fourCC the chunk identifier
     /// @return the matching chunk type, or [#UNKNOWN]
-    public static WebPRiffChunk fromFourCc(String fourCc) {
+    public static WebPRiffChunk fromFourCc(FourCC fourCC) {
         for (WebPRiffChunk value : values()) {
-            if (value != UNKNOWN && value.fourCc.equals(fourCc)) {
+            if (value != UNKNOWN && value.fourCc.equals(fourCC)) {
                 return value;
             }
         }
         return UNKNOWN;
     }
 
-    /// Returns the canonical FourCC string when one exists.
+    /// Returns the canonical FourCC value when one exists.
     ///
-    /// @return the ASCII chunk identifier, or an empty string for [#UNKNOWN]
-    public String fourCc() {
+    /// @return the chunk identifier, or `null` for [#UNKNOWN]
+    public FourCC fourCC() {
         return fourCc;
     }
 }

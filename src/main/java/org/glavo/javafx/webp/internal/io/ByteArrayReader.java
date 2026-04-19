@@ -16,8 +16,8 @@
 package org.glavo.javafx.webp.internal.io;
 
 import org.glavo.javafx.webp.WebPException;
+import org.glavo.javafx.webp.internal.codec.FourCC;
 
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 /// Little-endian byte reader backed by an in-memory array.
@@ -135,10 +135,11 @@ public final class ByteArrayReader {
 
     /// Reads a FourCC identifier.
     ///
-    /// @return the ASCII chunk identifier
+    /// @return the chunk identifier
     /// @throws WebPException if the buffer is truncated
-    public String readFourCc() throws WebPException {
-        return new String(readBytes(4), StandardCharsets.US_ASCII);
+    public FourCC readFourCc() throws WebPException {
+        byte[] fourCc = readBytes(4);
+        return new FourCC(fourCc[0], fourCc[1], fourCc[2], fourCc[3]);
     }
 
     /// Reads a fixed-size byte array.

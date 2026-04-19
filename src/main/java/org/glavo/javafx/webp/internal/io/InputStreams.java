@@ -16,10 +16,10 @@
 package org.glavo.javafx.webp.internal.io;
 
 import org.glavo.javafx.webp.WebPException;
+import org.glavo.javafx.webp.internal.codec.FourCC;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 
 /// Primitive stream helpers for the sequential RIFF parser.
 public final class InputStreams {
@@ -30,10 +30,11 @@ public final class InputStreams {
     /// Reads a FourCC identifier from an input stream.
     ///
     /// @param input the source stream
-    /// @return the ASCII chunk identifier
+    /// @return the chunk identifier
     /// @throws IOException if the stream is truncated or unreadable
-    public static String readFourCc(InputStream input) throws IOException {
-        return new String(readFully(input, 4), StandardCharsets.US_ASCII);
+    public static FourCC readFourCc(InputStream input) throws IOException {
+        byte[] fourCc = readFully(input, 4);
+        return new FourCC(fourCc[0], fourCc[1], fourCc[2], fourCc[3]);
     }
 
     /// Reads an unsigned 16-bit little-endian integer.
