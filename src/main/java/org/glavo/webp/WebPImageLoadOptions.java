@@ -15,11 +15,9 @@
  */
 package org.glavo.webp;
 
-import javafx.scene.image.Image;
 import org.jetbrains.annotations.NotNullByDefault;
 
-/// Immutable loading options that mirror the scaling-related parameters of the JavaFX
-/// [Image] constructors.
+/// Immutable loading options that mirror the scaling-related parameters.
 ///
 /// The options only control the dimensions and filtering used for decoded output. They never
 /// alter the source WebP metadata or animation timing.
