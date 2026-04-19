@@ -15,6 +15,7 @@
  */
 package org.glavo.webp;
 
+import org.glavo.webp.javafx.WebPFXImage;
 import org.jetbrains.annotations.NotNullByDefault;
 
 import javafx.scene.image.Image;
@@ -198,21 +199,22 @@ final class WebPDecoderTest {
     }
 
     @Test
-    void decodeFirstFrameImageProducesJavaFxImage() throws Exception {
-        var options = WebPImageLoadOptions.builder()
+    void javaFxImageFromFrameProducesWritableImage() throws Exception {
+        WebPImageLoadOptions options = WebPImageLoadOptions.builder()
                 .requestedWidth(96)
                 .requestedHeight(96)
                 .preserveRatio(true)
                 .smooth(true)
                 .build();
 
-        var image = WebPDecoder.decodeFirstFrameImage(resource("images/gallery2-1_webp_ll.webp"), options);
+        WebPFrame frame = WebPDecoder.decodeAll(resource("images/gallery2-1_webp_ll.webp"), options).getFrames().get(0);
+        var image = new WebPFXImage(frame);
         assertTrue(image.getWidth() > 0);
         assertTrue(image.getHeight() > 0);
     }
 
     @Test
-    void scaledFirstFrameImageMatchesScaledDecodedFrame() throws Exception {
+    void javaFxImageFromFrameMatchesScaledDecodedFrame() throws Exception {
         WebPImageLoadOptions options = WebPImageLoadOptions.builder()
                 .requestedWidth(53)
                 .requestedHeight(27)
@@ -221,7 +223,7 @@ final class WebPDecoderTest {
                 .build();
 
         WebPFrame frame = WebPDecoder.decodeAll(resource("images/gallery2-1_webp_ll.webp"), options).getFrames().get(0);
-        Image image = WebPDecoder.decodeFirstFrameImage(resource("images/gallery2-1_webp_ll.webp"), options);
+        Image image = new WebPFXImage(frame);
         PixelReader reader = image.getPixelReader();
         assertNotNull(reader);
 
@@ -241,9 +243,9 @@ final class WebPDecoderTest {
     }
 
     @Test
-    void writableImageRoundTripsArgbPixels() throws Exception {
+    void javaFxImageFromFrameRoundTripsArgbPixels() throws Exception {
         WebPFrame frame = WebPDecoder.decodeAll(resource("images/gallery2-1_webp_a.webp")).getFrames().get(0);
-        var image = frame.toWritableImage();
+        var image = new WebPFXImage(frame);
         var reader = image.getPixelReader();
         assertNotNull(reader);
 

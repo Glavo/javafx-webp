@@ -15,11 +15,7 @@
  */
 package org.glavo.webp;
 
-import javafx.scene.image.PixelFormat;
-import javafx.scene.image.PixelWriter;
 import org.jetbrains.annotations.NotNullByDefault;
-
-import javafx.scene.image.WritableImage;
 
 import java.nio.IntBuffer;
 
@@ -27,7 +23,8 @@ import java.nio.IntBuffer;
 ///
 /// For static images the library returns a single frame with a duration of `0`. For
 /// animated images each frame already represents the fully composited canvas for the corresponding
-/// presentation step, which makes the object suitable for direct JavaFX display.
+/// presentation step, which makes the object suitable for direct presentation or conversion by
+/// higher-level integrations such as `org.glavo.webp.javafx.WebPImage`.
 @NotNullByDefault
 public final class WebPFrame {
 
@@ -98,18 +95,5 @@ public final class WebPFrame {
     /// @return a newly allocated `ARGB` array
     public int[] getArgbArray() {
         return argbPixels.clone();
-    }
-
-    /// Creates a JavaFX [WritableImage] from this frame.
-    ///
-    /// The packed `ARGB` integers can be written directly through JavaFX's
-    /// `PixelFormat.getIntArgbInstance()` format without any channel swizzle or premultiplication.
-    ///
-    /// @return a newly allocated JavaFX image
-    public WritableImage toWritableImage() {
-        WritableImage image = new WritableImage(width, height);
-        PixelWriter writer = image.getPixelWriter();
-        writer.setPixels(0, 0, width, height, PixelFormat.getIntArgbInstance(), argbPixels, 0, width);
-        return image;
     }
 }

@@ -13,13 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.glavo.webp;
+package org.glavo.webp.javafx;
 
 import javafx.scene.input.KeyCode;
+import org.glavo.webp.WebPDecoder;
 import org.jetbrains.annotations.NotNullByDefault;
 import org.jetbrains.annotations.Nullable;
 
-import javafx.animation.PauseTransition;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
@@ -32,19 +32,16 @@ import javafx.scene.control.ScrollPane;
 import javafx.scene.control.ToolBar;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.TransferMode;
-import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
-import javafx.util.Duration;
 import org.jetbrains.annotations.UnknownNullability;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -62,7 +59,9 @@ public final class WebPViewerApp extends Application {
     private final StackPane imagePane = new StackPane(imageView);
 
     private @UnknownNullability Stage stage;
-    private @Nullable Playback playback;
+    private @Nullable Path currentPath;
+    private @Nullable org.glavo.webp.WebPImage currentImage;
+    private @Nullable WebPFXImage currentFxImage;
     private @Nullable ScrollPane scrollPane;
     private @Nullable Point2D dragAnchor;
     private double dragStartHValue;
@@ -208,18 +207,23 @@ public final class WebPViewerApp extends Application {
         stopPlayback();
 
         try {
-            WebPImage webpImage = WebPDecoder.decodeAll(path);
-            List<Image> frameImages = new ArrayList<>(webpImage.getFrames().size());
-            for (WebPFrame frame : webpImage.getFrames()) {
-                frameImages.add(frame.toWritableImage());
-            }
+            org.glavo.webp.WebPImage image = WebPDecoder.decodeAll(path);
+            WebPFXImage fxImage = new WebPFXImage(image, true);
 
-            playback = new Playback(path, webpImage, frameImages);
-            playback.showFirstFrame();
+            currentPath = path;
+            currentImage = image;
+            currentFxImage = fxImage;
 
-            statusLabel.setText(buildStatusText(playback));
+            imageView.setImage(fxImage);
+            imageView.setFitWidth(fxImage.getWidth());
+            imageView.setFitHeight(fxImage.getHeight());
+
+            statusLabel.setText(buildStatusText(path, image));
             stage.setTitle("WebP Viewer - " + path.getFileName());
         } catch (IOException ex) {
+            currentPath = null;
+            currentImage = null;
+            currentFxImage = null;
             imageView.setImage(null);
             statusLabel.setText("Failed to open " + path.getFileName() + ": " + ex.getMessage());
             stage.setTitle("WebP Viewer");
@@ -228,15 +232,17 @@ public final class WebPViewerApp extends Application {
     }
 
     private void stopPlayback() {
-        if (playback != null) {
-            playback.stop();
-            playback = null;
+        if (currentFxImage != null) {
+            currentFxImage.stop();
+            currentFxImage = null;
         }
+        currentPath = null;
+        currentImage = null;
     }
 
     private @Nullable Path currentDirectory() {
-        if (playback != null) {
-            Path parent = playback.path().getParent();
+        if (currentPath != null) {
+            Path parent = currentPath.getParent();
             if (parent != null && Files.isDirectory(parent)) {
                 return parent;
             }
@@ -283,10 +289,9 @@ public final class WebPViewerApp extends Application {
         return Math.max(0.0, Math.min(1.0, value));
     }
 
-    private String buildStatusText(Playback playback) {
-        WebPImage image = playback.image();
+    private String buildStatusText(Path path, org.glavo.webp.WebPImage image) {
         StringBuilder text = new StringBuilder();
-        text.append(playback.path().getFileName())
+        text.append(path.getFileName())
                 .append(" | ")
                 .append(image.getSourceWidth())
                 .append("x")
@@ -321,69 +326,4 @@ public final class WebPViewerApp extends Application {
         return chooser;
     }
 
-    /// Holds decoded playback state for one loaded file.
-    ///
-    /// The helper keeps pre-converted JavaFX [Image] instances and advances the
-    /// presentation with a self-rescheduling [PauseTransition] so that frame-specific
-    /// durations are honored without forcing a fixed-timestep animation loop.
-    @NotNullByDefault
-    private final class Playback {
-        private final Path path;
-        private final WebPImage image;
-        private final List<Image> frameImages;
-        private final PauseTransition pauseTransition = new PauseTransition();
-        private int frameIndex;
-
-        private Playback(Path path, WebPImage image, List<Image> frameImages) {
-            this.path = path;
-            this.image = image;
-            this.frameImages = List.copyOf(frameImages);
-            pauseTransition.setOnFinished(event -> advance());
-        }
-
-        private Path path() {
-            return path;
-        }
-
-        private WebPImage image() {
-            return image;
-        }
-
-        private void showFirstFrame() {
-            frameIndex = 0;
-            imageView.setImage(frameImages.get(0));
-            imageView.setFitWidth(frameImages.get(0).getWidth());
-            imageView.setFitHeight(frameImages.get(0).getHeight());
-            scheduleNextFrame();
-        }
-
-        private void advance() {
-            if (!image.isAnimated() || frameImages.size() <= 1) {
-                return;
-            }
-
-            frameIndex = (frameIndex + 1) % frameImages.size();
-            imageView.setImage(frameImages.get(frameIndex));
-            scheduleNextFrame();
-        }
-
-        /// Arms playback for the current frame.
-        ///
-        /// WebP permits zero-duration frames. To keep such files viewable in JavaFX, the viewer
-        /// normalizes non-positive durations to one display pulse instead of immediately recursing.
-        private void scheduleNextFrame() {
-            if (!image.isAnimated() || frameImages.size() <= 1) {
-                return;
-            }
-
-            int durationMillis = image.getFrames().get(frameIndex).getDurationMillis();
-            pauseTransition.stop();
-            pauseTransition.setDuration(Duration.millis(Math.max(1, durationMillis)));
-            pauseTransition.playFromStart();
-        }
-
-        private void stop() {
-            pauseTransition.stop();
-        }
-    }
 }

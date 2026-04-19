@@ -16,7 +16,6 @@
 
 import org.glavo.webp.WebPDecoder;
 import org.glavo.webp.WebPImageReader;
-import org.glavo.webp.WebPViewerApp;
 
 /// WebP decoding library for JavaFX.
 ///
@@ -37,12 +36,11 @@ import org.glavo.webp.WebPViewerApp;
 /// [WebPViewerApp] demo application, so the dependency remains
 /// optional at compile time.
 module org.glavo.webp {
-    requires javafx.graphics;
-
     requires static org.jetbrains.annotations;
 
-    // For WebPViewerApp
+    requires static javafx.graphics;
     requires static javafx.controls;
 
     exports org.glavo.webp;
+    exports org.glavo.webp.javafx;
 }

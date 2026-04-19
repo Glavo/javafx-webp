@@ -7,7 +7,7 @@ Pure Java WebP decoding library for JavaFX.
 The project can decode static and animated WebP
 images without using `java.desktop` or any external WebP codec at runtime. Decoded frames are
 available as tightly packed non-premultiplied `ARGB` `int[]` buffers and can be written directly
-to JavaFX `WritableImage` instances through `PixelFormat.getIntArgbInstance()`.
+to JavaFX through `org.glavo.webp.javafx.WebPFXImage`.
 
 This project was ported with Codex assistance from [image-rs/image-webp](https://github.com/image-rs/image-webp).
 
@@ -35,7 +35,7 @@ System.out.println(image.getWidth() + "x" + image.getHeight());
 System.out.println("frames = " + image.getFrames().size());
 ```
 
-Decode the first frame as a JavaFX image:
+Create a JavaFX image from decoded WebP content:
 
 ```java
 WebPImageLoadOptions options = WebPImageLoadOptions.builder()
@@ -46,7 +46,8 @@ WebPImageLoadOptions options = WebPImageLoadOptions.builder()
         .build();
 
 try (InputStream input = Files.newInputStream(Path.of("/image.webp"))) {
-    WritableImage image = WebPDecoder.decodeFirstFrameImage(input, options);
+    org.glavo.webp.WebPImage decoded = WebPDecoder.decodeAll(input, options);
+    org.glavo.webp.javafx.WebPFXImage image = new org.glavo.webp.javafx.WebPFXImage(decoded, false);
 }
 ```
 
@@ -72,6 +73,7 @@ try (InputStream input = Files.newInputStream(Path.of("/animated.webp"));
 - `WebPImage`: immutable fully decoded result
 - `WebPFrame`: one decoded presentation frame
   exposes packed non-premultiplied `ARGB` pixels via `getArgbPixels()` and `getArgbArray()`
+- `org.glavo.webp.javafx.WebPFXImage`: JavaFX `WritableImage` adapter for frames and animated images
 - `WebPImageLoadOptions`: JavaFX-style scaling options
 - `WebPMetadata`: raw ICC, EXIF, and XMP payloads
 - `WebPException`: checked exception for parse and decode failures

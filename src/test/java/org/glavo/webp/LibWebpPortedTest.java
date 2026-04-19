@@ -15,6 +15,7 @@
  */
 package org.glavo.webp;
 
+import org.glavo.webp.javafx.WebPFXImage;
 import org.jetbrains.annotations.NotNullByDefault;
 
 import javafx.scene.image.Image;
@@ -88,7 +89,9 @@ final class LibWebpPortedTest {
                     .smooth(true)
                     .build();
 
-            Image firstFrameImage = WebPDecoder.decodeFirstFrameImage(new ByteArrayInputStream(bytes), options);
+            Image firstFrameImage = new WebPFXImage(
+                    WebPDecoder.decodeAll(new ByteArrayInputStream(bytes), options).getFirstFrame()
+            );
             assertTrue(firstFrameImage.getWidth() > 0, resource);
             assertTrue(firstFrameImage.getHeight() > 0, resource);
 
@@ -194,7 +197,9 @@ final class LibWebpPortedTest {
 
         assertOnlyWebPException(() -> WebPDecoder.decodeAll(new ByteArrayInputStream(data)));
         assertOnlyWebPException(() -> WebPDecoder.decodeAll(new ChunkedInputStream(data, 3), options));
-        assertOnlyWebPException(() -> WebPDecoder.decodeFirstFrameImage(new ByteArrayInputStream(data), options));
+        assertOnlyWebPException(() -> new WebPFXImage(
+                WebPDecoder.decodeAll(new ByteArrayInputStream(data), options).getFirstFrame()
+        ));
         assertOnlyWebPException(() -> {
             try (WebPImageReader reader = WebPDecoder.open(new ChunkedInputStream(data, 5), options)) {
                 while (reader.readNextFrame() != null) {

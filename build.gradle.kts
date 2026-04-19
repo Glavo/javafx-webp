@@ -1,4 +1,5 @@
 import de.undercouch.gradle.tasks.download.Download
+import org.gradle.kotlin.dsl.sourceSets
 
 plugins {
     id("java-library")
@@ -69,14 +70,12 @@ java {
 
 tasks.withType()
 
-val mainSourceSet = sourceSets.named("main")
-
 tasks.withType<JavaCompile> {
     options.encoding = "UTF-8"
     options.release.set(17)
 }
 
-val mainClassName = "org.glavo.webp.WebPViewerApp"
+val mainClassName = "org.glavo.webp.javafx.WebPViewerApp"
 
 tasks.jar {
     manifest.attributes(
@@ -107,7 +106,7 @@ tasks.register<JavaExec>("run") {
     group = "application"
     description = "Runs the JavaFX WebP viewer."
     dependsOn(tasks.classes)
-    classpath = mainSourceSet.get().runtimeClasspath
+    classpath = sourceSets["main"].runtimeClasspath
     mainClass.set(mainClassName)
 }
 

@@ -17,8 +17,6 @@ package org.glavo.webp;
 
 import org.jetbrains.annotations.NotNullByDefault;
 
-import javafx.scene.image.WritableImage;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -125,27 +123,6 @@ public final class WebPDecoder {
     /// @throws WebPException if the file cannot be parsed or decoded
     public static WebPImage decodeAll(Path path) throws WebPException {
         return decodeAll(path, WebPImageLoadOptions.DEFAULT);
-    }
-
-    /// Decodes only the first frame and converts it to a JavaFX image.
-    ///
-    /// @param input the WebP byte stream
-    /// @param options scaling options that mirror JavaFX `Image` loading parameters
-    /// @return the decoded JavaFX image
-    /// @throws WebPException if parsing or decoding fails
-    public static WritableImage decodeFirstFrameImage(InputStream input, WebPImageLoadOptions options) throws WebPException {
-        try (WebPImageReader reader = open(input, options)) {
-            WebPFrame frame = reader.readNextFrame();
-            if (frame == null) {
-                throw new WebPException("WebP stream contains no decodable frames");
-            }
-            return frame.toWritableImage();
-        } catch (IOException ex) {
-            if (ex instanceof WebPException webpException) {
-                throw webpException;
-            }
-            throw new WebPException("Failed to decode WebP stream", ex);
-        }
     }
 
     private static WebPImage collect(WebPImageReader reader) throws IOException {
