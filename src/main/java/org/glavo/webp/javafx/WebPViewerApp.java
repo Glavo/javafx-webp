@@ -61,8 +61,7 @@ public final class WebPViewerApp extends Application {
 
     private @UnknownNullability Stage stage;
     private @Nullable Path currentPath;
-    private @Nullable WebPImage currentImage;
-    private @Nullable WebPFXImage currentFxImage;
+    private @Nullable WebPFXImage currentImage;
     private @Nullable ScrollPane scrollPane;
     private @Nullable Point2D dragAnchor;
     private double dragStartHValue;
@@ -212,8 +211,7 @@ public final class WebPViewerApp extends Application {
             WebPFXImage fxImage = new WebPFXImage(image);
 
             currentPath = path;
-            currentImage = image;
-            currentFxImage = fxImage;
+            currentImage = fxImage;
 
             imageView.setImage(fxImage);
             imageView.setFitWidth(fxImage.getWidth());
@@ -224,7 +222,6 @@ public final class WebPViewerApp extends Application {
         } catch (IOException ex) {
             currentPath = null;
             currentImage = null;
-            currentFxImage = null;
             imageView.setImage(null);
             statusLabel.setText("Failed to open " + path.getFileName() + ": " + ex.getMessage());
             stage.setTitle("WebP Viewer");
@@ -233,15 +230,14 @@ public final class WebPViewerApp extends Application {
     }
 
     private void stopPlayback() {
-        if (currentFxImage != null) {
-            Timeline animation = currentFxImage.getAnimation();
+        if (currentImage != null) {
+            Timeline animation = currentImage.getAnimation();
             if (animation != null) {
                 animation.stop();
             }
-            currentFxImage = null;
+            currentImage = null;
         }
         currentPath = null;
-        currentImage = null;
     }
 
     private @Nullable Path currentDirectory() {
