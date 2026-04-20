@@ -49,7 +49,7 @@ import java.util.concurrent.TimeUnit;
 @Warmup(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
 @Measurement(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
 @Fork(1)
-public class TwelveMonkeysComparisonBenchmark {
+public class ComparisonBenchmark {
 
     private static final WebPImageReaderSpi TWELVE_MONKEYS_SPI = new WebPImageReaderSpi();
 
@@ -118,7 +118,7 @@ public class TwelveMonkeysComparisonBenchmark {
     }
 
     private static byte[] resourceBytes(String path) throws IOException {
-        try (InputStream input = TwelveMonkeysComparisonBenchmark.class.getClassLoader().getResourceAsStream(path)) {
+        try (InputStream input = ComparisonBenchmark.class.getClassLoader().getResourceAsStream(path)) {
             if (input == null) {
                 throw new IOException("Missing benchmark resource: " + path);
             }
