@@ -63,7 +63,7 @@ public class TwelveMonkeysComparisonBenchmark {
     }
 
     @Benchmark
-    public WebPImage currentDecodeStaticLossy(BenchmarkImages images) throws Exception {
+    public WebPImage jwebpDecodeStaticLossy(BenchmarkImages images) throws Exception {
         return WebPImage.read(new ByteArrayInputStream(images.staticLossy));
     }
 
@@ -73,7 +73,7 @@ public class TwelveMonkeysComparisonBenchmark {
     }
 
     @Benchmark
-    public WebPImage currentDecodeStaticLosslessAlpha(BenchmarkImages images) throws Exception {
+    public WebPImage jwebpDecodeStaticLosslessAlpha(BenchmarkImages images) throws Exception {
         return WebPImage.read(new ByteArrayInputStream(images.staticLosslessAlpha));
     }
 
