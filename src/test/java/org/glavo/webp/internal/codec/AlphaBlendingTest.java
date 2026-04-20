@@ -71,7 +71,7 @@ final class AlphaBlendingTest {
     @Test
     void alphaBlendingOptimizationFast() {
         var random = new Random(0);
-        for (int i = 0; i < 1_000_000; i++) {
+        for (int i = 0; i < 10_000_000; i++) {
             int r1 = random.nextInt(255);
             int a1 = random.nextInt(11, 255);
             int r2 = random.nextInt(255);
