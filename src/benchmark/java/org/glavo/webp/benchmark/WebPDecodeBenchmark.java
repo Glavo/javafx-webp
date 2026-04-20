@@ -40,7 +40,7 @@ import java.util.concurrent.TimeUnit;
 ///
 /// The benchmarks reuse the checked-in test images so performance comparisons can be reproduced
 /// against the same corpus used by correctness tests.
-@BenchmarkMode(Mode.AverageTime)
+@BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
 @Warmup(iterations = 3, time = 1, timeUnit = TimeUnit.SECONDS)
 @Measurement(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
