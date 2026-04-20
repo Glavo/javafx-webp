@@ -55,17 +55,7 @@ Decode a whole image at once:
 WebPImage image = WebPImage.read(Path.of("sample.webp"));
 System.out.println(image.getWidth() + "x" + image.getHeight());
 System.out.println("frames = " + image.getFrames().size());
-```
-
-Create a JavaFX image from decoded WebP content:
-
-```java
-try (InputStream input = Files.newInputStream(Path.of("/image.webp"))) {
-    // Create a JavaFX image from a WebPImage.
-    // If it is an animated WebP, it will automatically play the animation. 
-    // You can control its behavior by passing the autoplay parameter.
-    Image image = new WebPFXImage(WebPImage.read(input, options));
-}
+System.out.println("pixels = " + image.getFirstFrame().getArgbPixels());
 ```
 
 Stream frames from an animated WebP:
@@ -79,11 +69,25 @@ try (InputStream input = Files.newInputStream(Path.of("/animated.webp"));
             break;
         }
         System.out.println("duration = " + frame.getDurationMillis());
-
-        // Create a JavaFX image from a WebPFrame.
-        Image image = new WebPFXImage(frame);
     }
 }
+```
+
+### JavaFX Integration
+
+JWebP's core part only depends on the `java.base` module, which can work normally on the Android platform.
+
+However, JWebP also provides optional components for JavaFX, located in the `org.glavo.webp.javafx` package,
+which can easily convert `WebPImage` to JavaFX `Image`:
+
+```java
+// Create a JavaFX image from a WebPImage.
+// If it is an animated WebP, it will automatically play the animation.
+// You can control its behavior by passing the autoplay parameter.
+javafx.scene.image.Image _ = new WebPFXImage(WebPImage.read(...));
+
+// Create a JavaFX image from a WebPFrame.
+javafx.scene.image.Image _ = new WebPFXImage(WebPFrame.read(...).getFirstFrame());
 ```
 
 ## Testing
