@@ -23,11 +23,32 @@ repositories {
     mavenCentral()
 }
 
-val osName = System.getProperty("os.name").lowercase()
-val osArch = System.getProperty("os.arch").lowercase()
+val mainSourceSet = sourceSets["main"]
+val testSourceSet = sourceSets["test"]
+val benchmarkSharedTestResources = files({ testSourceSet.output.resourcesDir })
+val benchmarkSourceSet = sourceSets.create("benchmark") {
+    java.srcDir("src/benchmark/java")
+    resources.srcDir("src/benchmark/resources")
+
+    compileClasspath += mainSourceSet.output
+    runtimeClasspath += output + compileClasspath + benchmarkSharedTestResources
+}
+
+configurations.named(benchmarkSourceSet.implementationConfigurationName) {
+    extendsFrom(configurations["implementation"])
+}
+configurations.named(benchmarkSourceSet.compileOnlyConfigurationName) {
+    extendsFrom(configurations["compileOnly"], configurations["compileOnlyApi"])
+}
+configurations.named(benchmarkSourceSet.runtimeOnlyConfigurationName) {
+    extendsFrom(configurations["runtimeOnly"])
+}
 
 dependencies {
     compileOnlyApi("org.jetbrains:annotations:26.1.0")
+
+    val osName = System.getProperty("os.name").lowercase()
+    val osArch = System.getProperty("os.arch").lowercase()
 
     val javafxVersion = "21.0.10"
     val javafxOS = when {
@@ -56,9 +77,17 @@ dependencies {
     javafx("controls")
     javafx("graphics")
 
+    // Test
+
     testImplementation(platform("org.junit:junit-bom:6.0.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+
+    // Benchmark
+
+    val jmhVersion = "1.37"
+    add(benchmarkSourceSet.implementationConfigurationName, "org.openjdk.jmh:jmh-core:$jmhVersion")
+    add(benchmarkSourceSet.annotationProcessorConfigurationName, "org.openjdk.jmh:jmh-generator-annprocess:$jmhVersion")
 }
 
 java {
@@ -72,6 +101,10 @@ tasks.withType()
 tasks.withType<JavaCompile> {
     options.encoding = "UTF-8"
     options.release.set(17)
+}
+
+tasks.named<JavaCompile>(benchmarkSourceSet.compileJavaTaskName) {
+    modularity.inferModulePath.set(false)
 }
 
 val mainClassName = "org.glavo.webp.javafx.WebPViewerApp"
@@ -107,6 +140,14 @@ tasks.register<JavaExec>("run") {
     dependsOn(tasks.classes)
     classpath = sourceSets["test"].runtimeClasspath
     mainClass.set(mainClassName)
+}
+
+tasks.register<JavaExec>("benchmark") {
+    group = "benchmark"
+    description = "Runs JMH benchmarks from src/benchmark/java."
+    dependsOn(tasks.named(benchmarkSourceSet.classesTaskName), tasks.processTestResources)
+    classpath = benchmarkSourceSet.runtimeClasspath
+    mainClass.set("org.openjdk.jmh.Main")
 }
 
 // Test
