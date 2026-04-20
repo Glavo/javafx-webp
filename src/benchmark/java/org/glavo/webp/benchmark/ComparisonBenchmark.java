@@ -40,7 +40,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.concurrent.TimeUnit;
 
-/// JMH benchmarks comparing this project against TwelveMonkeys for still-image WebP decoding.
+/// JMH benchmarks comparing this project against TwelveMonkeys and direct JavaFX PNG loading.
 ///
 /// The comparison reuses the same checked-in sample images for both implementations and is
 /// intentionally limited to still images.
@@ -57,11 +57,15 @@ public class ComparisonBenchmark {
     public static class BenchmarkImages {
         byte[] staticLossy;
         byte[] staticLosslessAlpha;
+        byte[] staticLossyPng;
+        byte[] staticLosslessAlphaPng;
 
         @Setup
         public void load() throws IOException {
             staticLossy = resourceBytes("images/gallery1-1.webp");
             staticLosslessAlpha = resourceBytes("images/gallery2-1_webp_a.webp");
+            staticLossyPng = resourceBytes("reference/gallery1-1.png");
+            staticLosslessAlphaPng = resourceBytes("reference/gallery2-1_webp_a.png");
         }
     }
 
@@ -101,8 +105,18 @@ public class ComparisonBenchmark {
     }
 
     @Benchmark
+    public Image jfxReadPngStaticLossy(BenchmarkImages images) {
+        return new Image(new ByteArrayInputStream(images.staticLossyPng));
+    }
+
+    @Benchmark
     public Image twelveMonkeysToJavaFXStaticLosslessAlpha(BenchmarkImages images) throws Exception {
         return SwingFXUtils.toFXImage(readStillImageWithProvider(images.staticLosslessAlpha), null);
+    }
+
+    @Benchmark
+    public Image jfxReadPngStaticLosslessAlpha(BenchmarkImages images) {
+        return new Image(new ByteArrayInputStream(images.staticLosslessAlphaPng));
     }
 
     private static BufferedImage readStillImageWithProvider(byte[] bytes) throws Exception {
