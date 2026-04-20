@@ -81,6 +81,24 @@ final class BufferedInputTest {
     }
 
     @Test
+    void skipConsumesBytesAcrossMultipleRefills() throws Exception {
+        byte[] payload = payload(9000);
+        byte[] data = testData(payload);
+
+        try (BufferedInput input = new BufferedInput.OfInputStream(new FragmentedInputStream(data, 113))) {
+            input.skip(1 + 2 + 4 + 8L);
+            assertArrayEquals(payload, input.readByteArray(payload.length));
+        }
+    }
+
+    @Test
+    void skipThrowsWhenSourceIsTruncated() throws Exception {
+        try (BufferedInput input = new BufferedInput.OfByteBuffer(ByteBuffer.wrap(new byte[]{1, 2, 3}))) {
+            assertThrows(WebPException.class, () -> input.skip(4));
+        }
+    }
+
+    @Test
     void closeClosesUnderlyingStreamAndRejectsFurtherReads() throws Exception {
         TrackingInputStream source = new TrackingInputStream(new byte[]{1, 2, 3}, 2);
         BufferedInput input = new BufferedInput.OfInputStream(source);

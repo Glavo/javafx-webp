@@ -72,11 +72,6 @@ public abstract class BufferedInput implements Closeable {
         this.buffer = buffer;
     }
 
-    /// Returns the internal buffer used by subclasses.
-    protected final ByteBuffer buffer() {
-        return buffer;
-    }
-
     /// Fails when the input has already been closed.
     protected final void ensureOpen() throws IOException {
         if (closed) {
@@ -96,10 +91,10 @@ public abstract class BufferedInput implements Closeable {
 
         if (buffer.remaining() < required) {
             fillBuffer(required);
-        }
 
-        if (buffer.remaining() < required) {
-            throw unexpectedEndOfInput();
+            if (buffer.remaining() < required) {
+                throw unexpectedEndOfInput();
+            }
         }
     }
 
@@ -157,6 +152,37 @@ public abstract class BufferedInput implements Closeable {
             offset += chunk;
         }
         return result;
+    }
+
+    /// Skips exactly `len` bytes.
+    ///
+    /// Unlike `InputStream.skip(long)`, this method guarantees that either all requested bytes
+    /// are discarded or an exception is thrown.
+    ///
+    /// @param len the number of bytes to skip
+    /// @throws IOException if the source is truncated, closed, or unreadable
+    public void skip(long len) throws IOException {
+        if (len < 0) {
+            throw new IllegalArgumentException("len < 0: " + len);
+        }
+        if (len == 0) {
+            ensureOpen();
+            return;
+        }
+
+        ensureOpen();
+
+        long remaining = len;
+        while (remaining > 0) {
+            if (!buffer.hasRemaining()) {
+                int request = buffer.capacity() == 0 ? 1 : (int) Math.min(remaining, buffer.capacity());
+                ensureBufferRemaining(request);
+            }
+
+            int chunk = (int) Math.min(remaining, buffer.remaining());
+            buffer.position(buffer.position() + chunk);
+            remaining -= chunk;
+        }
     }
 
     /// Reads a signed byte.
