@@ -38,10 +38,16 @@ import org.glavo.webp.WebPImageReader;
 module org.glavo.webp {
     requires static org.jetbrains.annotations;
 
+    // Optional dependencies; if present, functionality in the org.glavo.webp.swing package can be used.
+    requires static java.desktop;
+
     // Optional dependencies; if present, functionality in the org.glavo.webp.javafx package can be used.
     requires static javafx.graphics;
+
+    // Optional dependencies; only used for the Demo application, not required when used as a library.
     requires static javafx.controls;
 
     exports org.glavo.webp;
     exports org.glavo.webp.javafx;
+    exports org.glavo.webp.swing;
 }
