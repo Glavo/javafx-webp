@@ -84,10 +84,14 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
     // Benchmark
+    fun benchmarkImplementation(notation: Any) = add(benchmarkSourceSet.implementationConfigurationName, notation)
+    fun benchmarkAnnotationProcessor(notation: Any) = add(benchmarkSourceSet.annotationProcessorConfigurationName, notation)
 
     val jmhVersion = "1.37"
-    add(benchmarkSourceSet.implementationConfigurationName, "org.openjdk.jmh:jmh-core:$jmhVersion")
-    add(benchmarkSourceSet.annotationProcessorConfigurationName, "org.openjdk.jmh:jmh-generator-annprocess:$jmhVersion")
+    benchmarkImplementation("org.openjdk.jmh:jmh-core:$jmhVersion")
+    benchmarkAnnotationProcessor("org.openjdk.jmh:jmh-generator-annprocess:$jmhVersion")
+
+    benchmarkImplementation("com.twelvemonkeys.imageio:imageio-webp:3.13.1")
 }
 
 java {
