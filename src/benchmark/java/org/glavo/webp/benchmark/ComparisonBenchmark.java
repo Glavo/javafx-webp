@@ -49,7 +49,7 @@ import java.util.concurrent.TimeUnit;
 @OutputTimeUnit(TimeUnit.SECONDS)
 @Warmup(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
 @Measurement(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
-@Fork(value = 1, jvmArgsAppend = "-Xms1G -Xmx1G")
+@Fork(value = 1, jvmArgsAppend = {"-Xms1G", "-Xmx1G"})
 public class ComparisonBenchmark {
 
     private static final WebPImageReaderSpi TWELVE_MONKEYS_SPI = new WebPImageReaderSpi();
