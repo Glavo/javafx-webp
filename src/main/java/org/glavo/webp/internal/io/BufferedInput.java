@@ -206,7 +206,7 @@ public abstract class BufferedInput implements Closeable {
     ///
     /// @return the next short value
     /// @throws IOException if the source is truncated, closed, or unreadable
-    public short readShort() throws IOException {
+    public short readShortLE() throws IOException {
         ensureBufferRemaining(Short.BYTES);
         return buffer.getShort();
     }
@@ -215,15 +215,15 @@ public abstract class BufferedInput implements Closeable {
     ///
     /// @return the next unsigned short widened to `int`
     /// @throws IOException if the source is truncated, closed, or unreadable
-    public int readUnsignedShort() throws IOException {
-        return Short.toUnsignedInt(readShort());
+    public int readUnsignedShortLE() throws IOException {
+        return Short.toUnsignedInt(readShortLE());
     }
 
     /// Reads a signed 32-bit little-endian integer.
     ///
     /// @return the next int value
     /// @throws IOException if the source is truncated, closed, or unreadable
-    public int readInt() throws IOException {
+    public int readIntLE() throws IOException {
         ensureBufferRemaining(Integer.BYTES);
         return buffer.getInt();
     }
@@ -232,35 +232,17 @@ public abstract class BufferedInput implements Closeable {
     ///
     /// @return the next unsigned int widened to `long`
     /// @throws IOException if the source is truncated, closed, or unreadable
-    public long readUnsignedInt() throws IOException {
-        return Integer.toUnsignedLong(readInt());
+    public long readUnsignedIntLE() throws IOException {
+        return Integer.toUnsignedLong(readIntLE());
     }
 
     /// Reads a signed 64-bit little-endian integer.
     ///
     /// @return the next long value
     /// @throws IOException if the source is truncated, closed, or unreadable
-    public long readLong() throws IOException {
+    public long readLongLE() throws IOException {
         ensureBufferRemaining(Long.BYTES);
         return buffer.getLong();
-    }
-
-    /// Reads a 32-bit IEEE 754 float.
-    ///
-    /// @return the next float value
-    /// @throws IOException if the source is truncated, closed, or unreadable
-    public float readFloat() throws IOException {
-        ensureBufferRemaining(Float.BYTES);
-        return buffer.getFloat();
-    }
-
-    /// Reads a 64-bit IEEE 754 double.
-    ///
-    /// @return the next double value
-    /// @throws IOException if the source is truncated, closed, or unreadable
-    public double readDouble() throws IOException {
-        ensureBufferRemaining(Double.BYTES);
-        return buffer.getDouble();
     }
 
     /// `BufferedInput` backed by an `InputStream`.

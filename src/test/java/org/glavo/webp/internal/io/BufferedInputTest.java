@@ -67,7 +67,7 @@ final class BufferedInputTest {
         source.position(2);
 
         try (BufferedInput input = new BufferedInput.OfByteBuffer(source)) {
-            assertEquals(0x89ABCDEF, input.readInt());
+            assertEquals(0x89ABCDEF, input.readIntLE());
             assertEquals(2, source.position());
             assertEquals(ByteOrder.BIG_ENDIAN, source.order());
         }
@@ -76,7 +76,7 @@ final class BufferedInputTest {
     @Test
     void truncatedInputThrowsWebPException() throws Exception {
         try (BufferedInput input = new BufferedInput.OfByteBuffer(ByteBuffer.wrap(new byte[]{1, 2, 3}))) {
-            assertThrows(WebPException.class, input::readInt);
+            assertThrows(WebPException.class, input::readIntLE);
         }
     }
 
@@ -111,9 +111,9 @@ final class BufferedInputTest {
 
     private static void assertReadsHeaderAndPayload(BufferedInput input, byte[] payload) throws Exception {
         assertEquals(0xAB, input.readUnsignedByte());
-        assertEquals(0x1234, input.readUnsignedShort());
-        assertEquals(0x89ABCDEF, input.readInt());
-        assertEquals(0x0123456789ABCDEFL, input.readLong());
+        assertEquals(0x1234, input.readUnsignedShortLE());
+        assertEquals(0x89ABCDEF, input.readIntLE());
+        assertEquals(0x0123456789ABCDEFL, input.readLongLE());
         assertArrayEquals(payload, input.readByteArray(payload.length));
     }
 
