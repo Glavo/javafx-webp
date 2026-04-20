@@ -19,7 +19,7 @@ and it has been used in [Hello Minecraft! Launcher](https://github.com/HMCL-dev/
 - Supports animated WebP.
 - Supports image scaling during reading.
 - Raw ICC, EXIF, and XMP metadata extraction
-- Provides optional JavaFX helper functionality for easily converting WebP images to JavaFX images.
+- Provides optional JavaFX and Swing helper functionality for easily converting WebP images to JavaFX and Swing images.
 
 ## Requirements
 
