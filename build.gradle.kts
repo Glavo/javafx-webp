@@ -151,6 +151,12 @@ tasks.register<JavaExec>("benchmark") {
     description = "Runs JMH benchmarks from src/benchmark/java."
     dependsOn(tasks.named(benchmarkSourceSet.classesTaskName), tasks.processTestResources)
     classpath = benchmarkSourceSet.runtimeClasspath
+
+    @Suppress("UnstableApiUsage")
+    if (javaVersion >= JavaVersion.VERSION_24 && javaVersion <= JavaVersion.VERSION_27) {
+        jvmArgs("--sun-misc-unsafe-memory-access=allow")
+    }
+
     mainClass.set("org.openjdk.jmh.Main")
 }
 
