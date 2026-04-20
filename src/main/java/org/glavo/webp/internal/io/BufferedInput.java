@@ -35,7 +35,7 @@ import java.util.Objects;
 ///
 /// The class is not thread-safe.
 @NotNullByDefault
-public abstract class BufferedInput implements Closeable {
+public sealed abstract class BufferedInput implements Closeable {
     private static final int DEFAULT_BUFFER_SIZE = 8192;
 
     protected final ByteBuffer buffer;
