@@ -15,6 +15,7 @@
  */
 package org.glavo.webp.benchmark;
 
+import com.twelvemonkeys.imageio.plugins.webp.WebPImageReaderSpi;
 import org.glavo.webp.WebPImage;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -29,7 +30,6 @@ import org.openjdk.jmh.annotations.Warmup;
 
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
-import javax.imageio.spi.ImageReaderSpi;
 import javax.imageio.stream.ImageInputStream;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
@@ -48,7 +48,7 @@ import java.util.concurrent.TimeUnit;
 @Fork(1)
 public class TwelveMonkeysComparisonBenchmark {
 
-    private static final String TWELVE_MONKEYS_SPI = "com.twelvemonkeys.imageio.plugins.webp.WebPImageReaderSpi";
+    private static final WebPImageReaderSpi TWELVE_MONKEYS_SPI = new WebPImageReaderSpi();
 
     @State(Scope.Benchmark)
     public static class BenchmarkImages {
@@ -69,7 +69,7 @@ public class TwelveMonkeysComparisonBenchmark {
 
     @Benchmark
     public BufferedImage twelveMonkeysDecodeStaticLossy(BenchmarkImages images) throws Exception {
-        return readStillImageWithProvider(TWELVE_MONKEYS_SPI, images.staticLossy);
+        return readStillImageWithProvider(images.staticLossy);
     }
 
     @Benchmark
@@ -79,17 +79,12 @@ public class TwelveMonkeysComparisonBenchmark {
 
     @Benchmark
     public BufferedImage twelveMonkeysDecodeStaticLosslessAlpha(BenchmarkImages images) throws Exception {
-        return readStillImageWithProvider(TWELVE_MONKEYS_SPI, images.staticLosslessAlpha);
+        return readStillImageWithProvider(images.staticLosslessAlpha);
     }
 
-    private static BufferedImage readStillImageWithProvider(String spiClassName, byte[] bytes) throws Exception {
-        ImageReaderSpi spi = createReaderSpi(spiClassName);
+    private static BufferedImage readStillImageWithProvider(byte[] bytes) throws Exception {
         try (ImageInputStream input = ImageIO.createImageInputStream(new ByteArrayInputStream(bytes))) {
-            if (input == null) {
-                throw new IOException("Failed to create ImageInputStream for " + spiClassName);
-            }
-
-            ImageReader reader = spi.createReaderInstance();
+            ImageReader reader = TWELVE_MONKEYS_SPI.createReaderInstance();
             try {
                 reader.setInput(input, true, true);
                 return reader.read(0);
@@ -97,11 +92,6 @@ public class TwelveMonkeysComparisonBenchmark {
                 reader.dispose();
             }
         }
-    }
-
-    private static ImageReaderSpi createReaderSpi(String spiClassName) throws Exception {
-        Class<?> spiClass = Class.forName(spiClassName);
-        return (ImageReaderSpi) spiClass.getDeclaredConstructor().newInstance();
     }
 
     private static byte[] resourceBytes(String path) throws IOException {
