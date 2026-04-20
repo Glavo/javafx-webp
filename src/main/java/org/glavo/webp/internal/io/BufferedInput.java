@@ -18,6 +18,7 @@ package org.glavo.webp.internal.io;
 import org.jetbrains.annotations.NotNullByDefault;
 
 import org.glavo.webp.WebPException;
+import org.glavo.webp.internal.codec.FourCC;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -135,6 +136,22 @@ public sealed abstract class BufferedInput implements Closeable {
         return new WebPException("Unexpected end of WebP stream");
     }
 
+    private static void skipFully(InputStream input, long length) throws IOException {
+        long remaining = length;
+        while (remaining > 0) {
+            long skipped = input.skip(remaining);
+            if (skipped > 0) {
+                remaining -= skipped;
+                continue;
+            }
+
+            if (input.read() < 0) {
+                throw unexpectedEndOfInput();
+            }
+            remaining--;
+        }
+    }
+
     /// Reads a fixed number of bytes into a newly allocated array.
     ///
     /// @param len the number of bytes to read
@@ -210,6 +227,15 @@ public sealed abstract class BufferedInput implements Closeable {
     /// @throws IOException if the source is truncated, closed, or unreadable
     public int readUnsignedByte() throws IOException {
         return Byte.toUnsignedInt(readByte());
+    }
+
+    /// Reads a FourCC identifier.
+    ///
+    /// @return the next FourCC value
+    /// @throws IOException if the source is truncated, closed, or unreadable
+    public FourCC readFourCC() throws IOException {
+        ensureBufferRemaining(4);
+        return FourCC.of(buffer.get(), buffer.get(), buffer.get(), buffer.get());
     }
 
     /// Reads a signed 16-bit little-endian integer.
@@ -333,7 +359,7 @@ public sealed abstract class BufferedInput implements Closeable {
             }
 
             clearBuffer();
-            InputStreams.skipFully(input, remaining);
+            skipFully(input, remaining);
         }
 
         @Override
@@ -457,6 +483,15 @@ public sealed abstract class BufferedInput implements Closeable {
         @Override
         protected void fillBuffer(int required) throws IOException {
             throw unexpectedEndOfInput();
+        }
+
+        /// Returns the unread byte count in the wrapped buffer.
+        ///
+        /// @return the unread byte count
+        /// @throws IOException if the reader has been closed
+        public int remaining() throws IOException {
+            ensureOpen();
+            return buffer.remaining();
         }
 
         @Override

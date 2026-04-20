@@ -18,10 +18,8 @@ package org.glavo.webp;
 import org.jetbrains.annotations.NotNullByDefault;
 import org.jetbrains.annotations.Unmodifiable;
 
-import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -66,8 +64,8 @@ public final class WebPImage {
     /// @return the fully decoded image
     /// @throws WebPException if the file cannot be parsed or decoded
     public static WebPImage read(Path path, WebPImageLoadOptions options) throws WebPException {
-        try (InputStream input = new BufferedInputStream(Files.newInputStream(path))) {
-            return read(input, options);
+        try (WebPImageReader reader = WebPImageReader.open(path, options)) {
+            return collect(reader);
         } catch (WebPException ex) {
             throw ex;
         } catch (IOException ex) {

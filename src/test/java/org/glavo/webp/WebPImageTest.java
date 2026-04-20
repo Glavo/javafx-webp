@@ -24,7 +24,10 @@ import org.glavo.webp.internal.Argb;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -63,6 +66,18 @@ final class WebPImageTest {
     }
 
     @Test
+    void decodesStaticImageFromPath() throws Exception {
+        Path path = writeTempWebp("images/regression-tiny.webp");
+        try {
+            WebPImage image = WebPImage.read(path);
+            assertEquals(1, image.getFrames().size());
+            assertFrameEquals(image.getFrames().get(0), "reference/regression-tiny.png");
+        } finally {
+            Files.deleteIfExists(path);
+        }
+    }
+
+    @Test
     void streamsAnimatedLosslessFrames() throws Exception {
         try (WebPImageReader reader = WebPImageReader.open(resource("images/animated-random_lossless.webp"))) {
             assertTrue(reader.isAnimated());
@@ -87,6 +102,32 @@ final class WebPImageTest {
 
             long summedDuration = frames.stream().mapToLong(WebPFrame::getDurationMillis).sum();
             assertEquals(reader.getLoopDurationMillis(), summedDuration);
+        }
+    }
+
+    @Test
+    void streamsAnimatedFramesFromPath() throws Exception {
+        Path path = writeTempWebp("images/animated-random_lossless.webp");
+        try (WebPImageReader reader = WebPImageReader.open(path)) {
+            assertTrue(reader.isAnimated());
+            assertEquals(3, reader.getFrameCount());
+
+            List<WebPFrame> frames = new ArrayList<>();
+            while (true) {
+                WebPFrame frame = reader.readNextFrame();
+                if (frame == null) {
+                    break;
+                }
+                frames.add(frame);
+            }
+
+            assertEquals(3, frames.size());
+            assertTrue(reader.isComplete());
+            assertFrameClose(frames.get(0), "reference/animated/random_lossless-1.png", 1);
+            assertFrameClose(frames.get(1), "reference/animated/random_lossless-2.png", 1);
+            assertFrameClose(frames.get(2), "reference/animated/random_lossless-3.png", 1);
+        } finally {
+            Files.deleteIfExists(path);
         }
     }
 
@@ -447,5 +488,13 @@ final class WebPImageTest {
             throw new IllegalArgumentException("Missing test resource: " + path);
         }
         return input;
+    }
+
+    private static Path writeTempWebp(String resourcePath) throws IOException {
+        Path path = Files.createTempFile("javafx-webp-", ".webp");
+        try (InputStream input = resource(resourcePath)) {
+            Files.write(path, input.readAllBytes());
+        }
+        return path;
     }
 }

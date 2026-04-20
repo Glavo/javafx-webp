@@ -25,12 +25,14 @@ import org.glavo.webp.internal.codec.ExtendedWebP;
 import org.glavo.webp.internal.codec.ParsedFrameDescriptor;
 import org.glavo.webp.internal.codec.ParsedWebPImage;
 import org.glavo.webp.internal.codec.WebPSequentialParser;
+import org.glavo.webp.internal.io.BufferedInput;
 import org.glavo.webp.internal.lossy.Vp8Decoder;
 import org.glavo.webp.internal.lossless.LosslessDecoder;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -57,9 +59,10 @@ public final class WebPImageReader implements AutoCloseable {
     /// @throws WebPException if the stream cannot be parsed or decoded
     public static WebPImageReader open(InputStream source, WebPImageLoadOptions options) throws WebPException {
         try {
-            ParsedWebPImage image = WebPSequentialParser.parse(source);
+            BufferedInput bufferedInput = new BufferedInput.OfInputStream(source);
+            ParsedWebPImage image = WebPSequentialParser.parse(bufferedInput);
             ScalePlan scalePlan = ScalePlan.create(image.sourceWidth(), image.sourceHeight(), options);
-            return new WebPImageReader(source, image, scalePlan);
+            return new WebPImageReader(bufferedInput, image, scalePlan);
         } catch (IOException ex) {
             if (ex instanceof WebPException webpException) {
                 throw webpException;
@@ -85,14 +88,15 @@ public final class WebPImageReader implements AutoCloseable {
     /// @throws IOException if the file cannot be opened
     /// @throws WebPException if the file cannot be parsed or decoded
     public static WebPImageReader open(Path path, WebPImageLoadOptions options) throws IOException, WebPException {
-        InputStream input = Files.newInputStream(path);
+        SeekableByteChannel channel = Files.newByteChannel(path);
         try {
-            ParsedWebPImage image = WebPSequentialParser.parse(input);
+            BufferedInput bufferedInput = new BufferedInput.OfByteChannel(channel);
+            ParsedWebPImage image = WebPSequentialParser.parse(bufferedInput);
             ScalePlan scalePlan = ScalePlan.create(image.sourceWidth(), image.sourceHeight(), options);
-            return new WebPImageReader(input, image, scalePlan);
+            return new WebPImageReader(bufferedInput, image, scalePlan);
         } catch (IOException | RuntimeException ex) {
             try {
-                input.close();
+                channel.close();
             } catch (IOException suppressed) {
                 ex.addSuppressed(suppressed);
             }

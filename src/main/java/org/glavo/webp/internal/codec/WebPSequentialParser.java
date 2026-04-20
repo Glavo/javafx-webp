@@ -19,12 +19,11 @@ import org.jetbrains.annotations.NotNullByDefault;
 
 import org.glavo.webp.WebPException;
 import org.glavo.webp.WebPMetadata;
-import org.glavo.webp.internal.io.ByteArrayReader;
-import org.glavo.webp.internal.io.InputStreams;
+import org.glavo.webp.internal.io.BufferedInput;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
-import java.io.InputStream;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -45,19 +44,19 @@ public final class WebPSequentialParser {
     private WebPSequentialParser() {
     }
 
-    /// Parses a WebP container from a forward-only stream.
+    /// Parses a WebP container from a forward-only buffered input.
     ///
-    /// @param input the WebP byte stream
+    /// @param input the WebP byte stream abstraction
     /// @return the parsed container data
     /// @throws IOException if the stream is truncated or malformed
-    public static ParsedWebPImage parse(InputStream input) throws IOException {
-        FourCC riff = InputStreams.readFourCC(input);
+    public static ParsedWebPImage parse(BufferedInput input) throws IOException {
+        FourCC riff = input.readFourCC();
         if (!WebPRiffChunk.RIFF.fourCC().equals(riff)) {
             throw new WebPException("Missing RIFF container header");
         }
 
-        long riffSize = InputStreams.readU32LE(input);
-        FourCC webp = InputStreams.readFourCC(input);
+        long riffSize = input.readUnsignedIntLE();
+        FourCC webp = input.readFourCC();
         if (!WebPRiffChunk.WEBP.fourCC().equals(webp)) {
             throw new WebPException("Missing WEBP signature");
         }
@@ -132,16 +131,16 @@ public final class WebPSequentialParser {
         );
     }
 
-    private static ParsedWebPImage parseExtended(InputStream input, long remainingBytes, byte[] payload) throws IOException {
-        ByteArrayReader header = new ByteArrayReader(payload);
+    private static ParsedWebPImage parseExtended(BufferedInput input, long remainingBytes, byte[] payload) throws IOException {
         if (payload.length < 10) {
             throw new WebPException("VP8X chunk is too small");
         }
 
-        int flags = header.readU8();
+        BufferedInput.OfByteBuffer header = new BufferedInput.OfByteBuffer(ByteBuffer.wrap(payload));
+        int flags = header.readUnsignedByte();
         header.skip(3);
-        int canvasWidth = header.readU24LE() + 1;
-        int canvasHeight = header.readU24LE() + 1;
+        int canvasWidth = header.readUnsignedInt24LE() + 1;
+        int canvasHeight = header.readUnsignedInt24LE() + 1;
 
         boolean animated = (flags & FLAG_ANIMATION) != 0;
         boolean alpha = (flags & FLAG_ALPHA) != 0;
@@ -167,9 +166,9 @@ public final class WebPSequentialParser {
                     if (chunk.payload().length < 6) {
                         throw new WebPException("ANIM chunk is too small");
                     }
-                    ByteArrayReader reader = new ByteArrayReader(chunk.payload());
-                    backgroundColorHint = reader.readBytes(4);
-                    loopCount = reader.readU16LE();
+                    BufferedInput.OfByteBuffer reader = new BufferedInput.OfByteBuffer(ByteBuffer.wrap(chunk.payload()));
+                    backgroundColorHint = reader.readByteArray(4);
+                    loopCount = reader.readUnsignedShortLE();
                 }
                 case ALPH -> pendingAlphaChunk = chunk.payload();
                 case VP8 -> {
@@ -248,18 +247,18 @@ public final class WebPSequentialParser {
         );
     }
 
-    private static ParsedFrameDescriptor parseAnimationFrame(byte[] payload, int canvasWidth, int canvasHeight) throws WebPException {
-        ByteArrayReader frame = new ByteArrayReader(payload);
+    private static ParsedFrameDescriptor parseAnimationFrame(byte[] payload, int canvasWidth, int canvasHeight) throws IOException {
         if (payload.length < 16) {
             throw new WebPException("ANMF chunk is too small");
         }
 
-        int frameX = frame.readU24LE() * 2;
-        int frameY = frame.readU24LE() * 2;
-        int frameWidth = frame.readU24LE() + 1;
-        int frameHeight = frame.readU24LE() + 1;
-        int durationMillis = frame.readU24LE();
-        int frameInfo = frame.readU8();
+        var frame = new BufferedInput.OfByteBuffer(ByteBuffer.wrap(payload));
+        int frameX = frame.readUnsignedInt24LE() * 2;
+        int frameY = frame.readUnsignedInt24LE() * 2;
+        int frameWidth = frame.readUnsignedInt24LE() + 1;
+        int frameHeight = frame.readUnsignedInt24LE() + 1;
+        int durationMillis = frame.readUnsignedInt24LE();
+        int frameInfo = frame.readUnsignedByte();
         boolean useAlphaBlending = (frameInfo & 0b10) == 0;
         boolean disposeToBackground = (frameInfo & 0b1) != 0;
 
@@ -276,11 +275,11 @@ public final class WebPSequentialParser {
         while (frame.remaining() > 0) {
             FourCC fourCc = frame.readFourCC();
             WebPRiffChunk type = WebPRiffChunk.fromFourCC(fourCc);
-            long chunkSize = frame.readU32LE();
+            long chunkSize = frame.readUnsignedIntLE();
             if (chunkSize > Integer.MAX_VALUE) {
                 throw new WebPException("Animated frame chunk is too large to buffer");
             }
-            byte[] chunkPayload = frame.readBytes((int) chunkSize);
+            byte[] chunkPayload = frame.readByteArray((int) chunkSize);
             if ((chunkSize & 1L) != 0L && frame.remaining() > 0) {
                 frame.skip(1);
             }
@@ -328,26 +327,33 @@ public final class WebPSequentialParser {
     /// @return the decoded frame dimensions
     /// @throws WebPException if the payload is truncated or malformed
     public static Dimensions parseVp8Dimensions(byte[] payload) throws WebPException {
-        ByteArrayReader reader = new ByteArrayReader(payload);
         if (payload.length < 10) {
             throw new WebPException("VP8 chunk is too small to contain a frame header");
         }
 
-        int tag = reader.readU24LE();
-        if ((tag & 1) != 0) {
-            throw new WebPException("Only VP8 keyframes are supported");
-        }
+        try {
+            BufferedInput.OfByteBuffer reader = new BufferedInput.OfByteBuffer(ByteBuffer.wrap(payload));
+            int tag = reader.readUnsignedInt24LE();
+            if ((tag & 1) != 0) {
+                throw new WebPException("Only VP8 keyframes are supported");
+            }
 
-        int signature0 = reader.readU8();
-        int signature1 = reader.readU8();
-        int signature2 = reader.readU8();
-        if (signature0 != 0x9D || signature1 != 0x01 || signature2 != 0x2A) {
-            throw new WebPException("Invalid VP8 frame signature");
-        }
+            int signature0 = reader.readUnsignedByte();
+            int signature1 = reader.readUnsignedByte();
+            int signature2 = reader.readUnsignedByte();
+            if (signature0 != 0x9D || signature1 != 0x01 || signature2 != 0x2A) {
+                throw new WebPException("Invalid VP8 frame signature");
+            }
 
-        int width = reader.readU16LE() & 0x3FFF;
-        int height = reader.readU16LE() & 0x3FFF;
-        return new Dimensions(width, height);
+            int width = reader.readUnsignedShortLE() & 0x3FFF;
+            int height = reader.readUnsignedShortLE() & 0x3FFF;
+            return new Dimensions(width, height);
+        } catch (IOException ex) {
+            if (ex instanceof WebPException webPException) {
+                throw webPException;
+            }
+            throw new WebPException("Failed to parse VP8 frame dimensions", ex);
+        }
     }
 
     /// Parses the VP8L chunk header.
@@ -356,34 +362,42 @@ public final class WebPSequentialParser {
     /// @return the decoded VP8L header
     /// @throws WebPException if the payload is truncated or malformed
     public static LosslessHeader parseVp8LHeader(byte[] payload) throws WebPException {
-        ByteArrayReader reader = new ByteArrayReader(payload);
         if (payload.length < 5) {
             throw new WebPException("VP8L chunk is too small to contain a frame header");
         }
-        int signature = reader.readU8();
-        if (signature != 0x2F) {
-            throw new WebPException("Invalid VP8L signature");
+
+        try {
+            BufferedInput.OfByteBuffer reader = new BufferedInput.OfByteBuffer(ByteBuffer.wrap(payload));
+            int signature = reader.readUnsignedByte();
+            if (signature != 0x2F) {
+                throw new WebPException("Invalid VP8L signature");
+            }
+            long bits = reader.readUnsignedIntLE();
+            int width = (int) (bits & 0x3FFF) + 1;
+            int height = (int) ((bits >>> 14) & 0x3FFF) + 1;
+            boolean alphaUsed = ((bits >>> 28) & 1) != 0;
+            int version = (int) ((bits >>> 29) & 0x7);
+            if (version != 0) {
+                throw new WebPException("Unsupported VP8L version: " + version);
+            }
+            return new LosslessHeader(width, height, alphaUsed);
+        } catch (IOException ex) {
+            if (ex instanceof WebPException webPException) {
+                throw webPException;
+            }
+            throw new WebPException("Failed to parse VP8L frame header", ex);
         }
-        long bits = reader.readU32LE();
-        int width = (int) (bits & 0x3FFF) + 1;
-        int height = (int) ((bits >>> 14) & 0x3FFF) + 1;
-        boolean alphaUsed = ((bits >>> 28) & 1) != 0;
-        int version = (int) ((bits >>> 29) & 0x7);
-        if (version != 0) {
-            throw new WebPException("Unsupported VP8L version: " + version);
-        }
-        return new LosslessHeader(width, height, alphaUsed);
     }
 
-    private static ChunkPayload readChunk(InputStream input) throws IOException {
-        FourCC fourCc = InputStreams.readFourCC(input);
-        long size = InputStreams.readU32LE(input);
+    private static ChunkPayload readChunk(BufferedInput input) throws IOException {
+        FourCC fourCc = input.readFourCC();
+        long size = input.readUnsignedIntLE();
         if (size > Integer.MAX_VALUE) {
             throw new WebPException("Chunk is too large to buffer in memory: " + size);
         }
-        byte[] payload = InputStreams.readFully(input, (int) size);
+        byte[] payload = input.readByteArray((int) size);
         if ((size & 1L) != 0L) {
-            InputStreams.skipFully(input, 1);
+            input.skip(1);
         }
         return new ChunkPayload(fourCc, WebPRiffChunk.fromFourCC(fourCc), payload, size);
     }
