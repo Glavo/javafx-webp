@@ -16,6 +16,7 @@
 package org.glavo.webp.benchmark;
 
 import com.twelvemonkeys.imageio.plugins.webp.WebPImageReaderSpi;
+import dev.matrixlab.webp4j.WebPCodec;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.image.Image;
 import org.glavo.webp.WebPImage;
@@ -119,12 +120,32 @@ public class StaticImageBenchmark {
     }
 
     @Benchmark
-    public Image jfxPNG(BenchmarkImages images) {
+    public BufferedImage jniLossless(BenchmarkImages images) throws Exception {
+        return WebPCodec.decodeImage(images.losslessWebp);
+    }
+
+    @Benchmark
+    public Image jniLosslessToJavaFX(BenchmarkImages images) throws Exception {
+        return SwingFXUtils.toFXImage(WebPCodec.decodeImage(images.losslessWebp), null);
+    }
+
+    @Benchmark
+    public BufferedImage jniLossy(BenchmarkImages images) throws Exception {
+        return WebPCodec.decodeImage(images.lossyWebp);
+    }
+
+    @Benchmark
+    public Image jniLossyToJavaFX(BenchmarkImages images) throws Exception {
+        return SwingFXUtils.toFXImage(WebPCodec.decodeImage(images.lossyWebp), null);
+    }
+
+    @Benchmark
+    public Image javafxPNG(BenchmarkImages images) {
         return new Image(new ByteArrayInputStream(images.png));
     }
 
     @Benchmark
-    public Image jfxJPG(BenchmarkImages images) {
+    public Image javafxJPG(BenchmarkImages images) {
         return new Image(new ByteArrayInputStream(images.jpg));
     }
 

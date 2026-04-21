@@ -94,6 +94,7 @@ dependencies {
     benchmarkAnnotationProcessor("org.openjdk.jmh:jmh-generator-annprocess:$jmhVersion")
 
     benchmarkImplementation("com.twelvemonkeys.imageio:imageio-webp:3.13.1")
+    benchmarkImplementation("dev.matrixlab.webp4j:webp4j-core:2.1.1")
 }
 
 java {
