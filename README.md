@@ -105,6 +105,16 @@ BufferedImage _ = WebPSwingUtils.fromWebPImage(WebPImage.read(...).getFirstFrame
 
 Currently, it only supports creating static `BufferedImage`, does not support animation and `ImageIO`.
 
+### JWebP Image Viewer
+
+We provide a sample application: JWebP Image Viewer.
+
+This is a simple image viewer based on JWebP; you can use any Java environment containing JavaFX, run it via `java -jar webp.jar`.
+
+You can download the latest version of JWebP Image Viewer from [GitHub Releases](https://github.com/Glavo/JWebP/releases).
+
+![](./demo.webp)
+
 ## Testing
 
 Run all tests:
