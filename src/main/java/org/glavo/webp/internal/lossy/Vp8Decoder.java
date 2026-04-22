@@ -637,6 +637,11 @@ public final class Vp8Decoder {
     private void loopFilter(int macroblockX, int macroblockY, MacroBlock macroBlock) {
         int lumaWidth = macroblockWidth * 16;
         int chromaWidth = macroblockWidth * 8;
+        byte[] yBuffer = frame.yBuffer;
+        byte[] uBuffer = frame.uBuffer;
+        byte[] vBuffer = frame.vBuffer;
+        int lumaBase = macroblockY * 16 * lumaWidth + macroblockX * 16;
+        int chromaBase = macroblockY * 8 * chromaWidth + macroblockX * 8;
         FilterParameters parameters = calculateFilterParameters(macroBlock);
 
         if (parameters.filterLevel == 0) {
@@ -650,45 +655,35 @@ public final class Vp8Decoder {
 
         if (macroblockX > 0) {
             if (frame.filterType) {
-                for (int y = 0; y < 16; y++) {
-                    int row = macroblockY * 16 + y;
-                    int x0 = macroblockX * 16;
-                    int start = row * lumaWidth + x0 - 4;
-                    LossyLoopFilter.simpleSegmentHorizontal(macroblockEdgeLimit, frame.yBuffer, start);
+                for (int start = lumaBase - 4, end = start + 16 * lumaWidth; start < end; start += lumaWidth) {
+                    LossyLoopFilter.simpleSegmentHorizontal(macroblockEdgeLimit, yBuffer, start);
                 }
             } else {
-                for (int y = 0; y < 16; y++) {
-                    int row = macroblockY * 16 + y;
-                    int x0 = macroblockX * 16;
-                    int start = row * lumaWidth + x0 - 4;
+                for (int start = lumaBase - 4, end = start + 16 * lumaWidth; start < end; start += lumaWidth) {
                     LossyLoopFilter.macroblockFilterHorizontal(
                             parameters.hevThreshold,
                             parameters.interiorLimit,
                             macroblockEdgeLimit,
-                            frame.yBuffer,
+                            yBuffer,
                             start
                     );
                 }
 
-                for (int y = 0; y < 8; y++) {
-                    int row = macroblockY * 8 + y;
-                    int x0 = macroblockX * 8;
-                    int uStart = row * chromaWidth + x0 - 4;
+                for (int start = chromaBase - 4, end = start + 8 * chromaWidth; start < end; start += chromaWidth) {
                     LossyLoopFilter.macroblockFilterHorizontal(
                             parameters.hevThreshold,
                             parameters.interiorLimit,
                             macroblockEdgeLimit,
-                            frame.uBuffer,
-                            uStart
+                            uBuffer,
+                            start
                     );
 
-                    int vStart = row * chromaWidth + x0 - 4;
                     LossyLoopFilter.macroblockFilterHorizontal(
                             parameters.hevThreshold,
                             parameters.interiorLimit,
                             macroblockEdgeLimit,
-                            frame.vBuffer,
-                            vStart
+                            vBuffer,
+                            start
                     );
                 }
             }
@@ -696,49 +691,39 @@ public final class Vp8Decoder {
 
         if (doSubblockFiltering) {
             if (frame.filterType) {
-                for (int x = 4; x < 15; x += 4) {
-                    for (int y = 0; y < 16; y++) {
-                        int row = macroblockY * 16 + y;
-                        int x0 = macroblockX * 16 + x;
-                        int start = row * lumaWidth + x0 - 4;
-                        LossyLoopFilter.simpleSegmentHorizontal(subblockEdgeLimit, frame.yBuffer, start);
+                for (int xOffset = 0; xOffset < 12; xOffset += 4) {
+                    for (int start = lumaBase + xOffset, end = start + 16 * lumaWidth; start < end; start += lumaWidth) {
+                        LossyLoopFilter.simpleSegmentHorizontal(subblockEdgeLimit, yBuffer, start);
                     }
                 }
             } else {
-                for (int x = 4; x < 13; x += 4) {
-                    for (int y = 0; y < 16; y++) {
-                        int row = macroblockY * 16 + y;
-                        int x0 = macroblockX * 16 + x;
-                        int start = row * lumaWidth + x0 - 4;
+                for (int xOffset = 0; xOffset < 12; xOffset += 4) {
+                    for (int start = lumaBase + xOffset, end = start + 16 * lumaWidth; start < end; start += lumaWidth) {
                         LossyLoopFilter.subblockFilterHorizontal(
                                 parameters.hevThreshold,
                                 parameters.interiorLimit,
                                 subblockEdgeLimit,
-                                frame.yBuffer,
+                                yBuffer,
                                 start
                         );
                     }
                 }
 
-                for (int y = 0; y < 8; y++) {
-                    int row = macroblockY * 8 + y;
-                    int x0 = macroblockX * 8 + 4;
-                    int uStart = row * chromaWidth + x0 - 4;
+                for (int start = chromaBase, end = start + 8 * chromaWidth; start < end; start += chromaWidth) {
                     LossyLoopFilter.subblockFilterHorizontal(
                             parameters.hevThreshold,
                             parameters.interiorLimit,
                             subblockEdgeLimit,
-                            frame.uBuffer,
-                            uStart
+                            uBuffer,
+                            start
                     );
 
-                    int vStart = row * chromaWidth + x0 - 4;
                     LossyLoopFilter.subblockFilterHorizontal(
                             parameters.hevThreshold,
                             parameters.interiorLimit,
                             subblockEdgeLimit,
-                            frame.vBuffer,
-                            vStart
+                            vBuffer,
+                            start
                     );
                 }
             }
@@ -747,46 +732,40 @@ public final class Vp8Decoder {
         if (macroblockY > 0) {
             if (frame.filterType) {
                 for (int x = 0; x < 16; x++) {
-                    int y0 = macroblockY * 16;
-                    int x0 = macroblockX * 16 + x;
                     LossyLoopFilter.simpleSegmentVertical(
                             macroblockEdgeLimit,
-                            frame.yBuffer,
-                            y0 * lumaWidth + x0,
+                            yBuffer,
+                            lumaBase + x,
                             lumaWidth
                     );
                 }
             } else {
                 for (int x = 0; x < 16; x++) {
-                    int y0 = macroblockY * 16;
-                    int x0 = macroblockX * 16 + x;
                     LossyLoopFilter.macroblockFilterVertical(
                             parameters.hevThreshold,
                             parameters.interiorLimit,
                             macroblockEdgeLimit,
-                            frame.yBuffer,
-                            y0 * lumaWidth + x0,
+                            yBuffer,
+                            lumaBase + x,
                             lumaWidth
                     );
                 }
 
                 for (int x = 0; x < 8; x++) {
-                    int y0 = macroblockY * 8;
-                    int x0 = macroblockX * 8 + x;
                     LossyLoopFilter.macroblockFilterVertical(
                             parameters.hevThreshold,
                             parameters.interiorLimit,
                             macroblockEdgeLimit,
-                            frame.uBuffer,
-                            y0 * chromaWidth + x0,
+                            uBuffer,
+                            chromaBase + x,
                             chromaWidth
                     );
                     LossyLoopFilter.macroblockFilterVertical(
                             parameters.hevThreshold,
                             parameters.interiorLimit,
                             macroblockEdgeLimit,
-                            frame.vBuffer,
-                            y0 * chromaWidth + x0,
+                            vBuffer,
+                            chromaBase + x,
                             chromaWidth
                     );
                 }
@@ -795,51 +774,46 @@ public final class Vp8Decoder {
 
         if (doSubblockFiltering) {
             if (frame.filterType) {
-                for (int y = 4; y < 15; y += 4) {
+                for (int rowOffset = 4 * lumaWidth; rowOffset <= 12 * lumaWidth; rowOffset += 4 * lumaWidth) {
                     for (int x = 0; x < 16; x++) {
-                        int y0 = macroblockY * 16 + y;
-                        int x0 = macroblockX * 16 + x;
                         LossyLoopFilter.simpleSegmentVertical(
                                 subblockEdgeLimit,
-                                frame.yBuffer,
-                                y0 * lumaWidth + x0,
+                                yBuffer,
+                                lumaBase + rowOffset + x,
                                 lumaWidth
                         );
                     }
                 }
             } else {
-                for (int y = 4; y < 13; y += 4) {
+                for (int rowOffset = 4 * lumaWidth; rowOffset <= 12 * lumaWidth; rowOffset += 4 * lumaWidth) {
                     for (int x = 0; x < 16; x++) {
-                        int y0 = macroblockY * 16 + y;
-                        int x0 = macroblockX * 16 + x;
                         LossyLoopFilter.subblockFilterVertical(
                                 parameters.hevThreshold,
                                 parameters.interiorLimit,
                                 subblockEdgeLimit,
-                                frame.yBuffer,
-                                y0 * lumaWidth + x0,
+                                yBuffer,
+                                lumaBase + rowOffset + x,
                                 lumaWidth
                         );
                     }
                 }
 
+                int chromaRowOffset = 4 * chromaWidth;
                 for (int x = 0; x < 8; x++) {
-                    int y0 = macroblockY * 8 + 4;
-                    int x0 = macroblockX * 8 + x;
                     LossyLoopFilter.subblockFilterVertical(
                             parameters.hevThreshold,
                             parameters.interiorLimit,
                             subblockEdgeLimit,
-                            frame.uBuffer,
-                            y0 * chromaWidth + x0,
+                            uBuffer,
+                            chromaBase + chromaRowOffset + x,
                             chromaWidth
                     );
                     LossyLoopFilter.subblockFilterVertical(
                             parameters.hevThreshold,
                             parameters.interiorLimit,
                             subblockEdgeLimit,
-                            frame.vBuffer,
-                            y0 * chromaWidth + x0,
+                            vBuffer,
+                            chromaBase + chromaRowOffset + x,
                             chromaWidth
                     );
                 }
