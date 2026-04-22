@@ -26,7 +26,6 @@ import org.glavo.webp.internal.lossy.LossyCommon.Plane;
 import org.glavo.webp.internal.lossy.LossyCommon.Segment;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.Arrays;
 
 /// Pure-Java VP8 keyframe decoder.
@@ -40,13 +39,18 @@ import java.util.Arrays;
 public final class Vp8Decoder {
 
     private static final int[] CHROMA_GROUP_STARTS = {5, 7};
+    private static final int FILTER_INFO_SEGMENT_MASK = 0x03;
+    private static final int FILTER_INFO_LUMA_MODE_SHIFT = 2;
+    private static final int FILTER_INFO_LUMA_MODE_MASK = 0x07;
+    private static final int FILTER_INFO_COEFFICIENTS_SKIPPED = 1 << 5;
+    private static final int FILTER_INFO_NON_ZERO_DCT = 1 << 6;
 
     private final ByteBuffer input;
     private final LossyArithmeticDecoder headerDecoder = new LossyArithmeticDecoder();
 
     private int macroblockWidth;
     private int macroblockHeight;
-    private final ArrayList<MacroBlock> macroblocks = new ArrayList<>();
+    private byte[] macroblockFilterInfo = new byte[0];
     private final Vp8Frame frame = new Vp8Frame();
 
     private boolean segmentsEnabled;
@@ -259,8 +263,10 @@ public final class Vp8Decoder {
 
         macroblockWidth = (frame.width + 15) / 16;
         macroblockHeight = (frame.height + 15) / 16;
-        macroblocks.clear();
-        macroblocks.ensureCapacity(macroblockWidth * macroblockHeight);
+        int macroblockCount = macroblockWidth * macroblockHeight;
+        if (macroblockFilterInfo.length < macroblockCount) {
+            macroblockFilterInfo = new byte[macroblockCount];
+        }
 
         top = new PreviousMacroBlock[macroblockWidth];
         for (int i = 0; i < top.length; i++) {
@@ -336,6 +342,8 @@ public final class Vp8Decoder {
 
         IntraMode sharedMode = macroBlock.lumaMode.asIntraMode();
         if (sharedMode == null) {
+            IntraMode[] bpred = new IntraMode[16];
+            macroBlock.bpred = bpred;
             for (int y = 0; y < 4; y++) {
                 for (int x = 0; x < 4; x++) {
                     IntraMode topMode = top[macroblockX].bpred[x];
@@ -345,14 +353,15 @@ public final class Vp8Decoder {
                     if (blockMode == null) {
                         throw new WebPException("Invalid VP8 intra prediction mode: " + intraCode);
                     }
-                    macroBlock.bpred[x + y * 4] = blockMode;
+                    bpred[x + y * 4] = blockMode;
                     top[macroblockX].bpred[x] = blockMode;
                     left.bpred[y] = blockMode;
                 }
             }
+            System.arraycopy(bpred, 12, top[macroblockX].bpred, 0, 4);
         } else {
-            Arrays.fill(macroBlock.bpred, sharedMode);
             Arrays.fill(left.bpred, sharedMode);
+            Arrays.fill(top[macroblockX].bpred, sharedMode);
         }
 
         int chromaModeCode = headerDecoder.readWithTree(LossyTables.KEYFRAME_UV_MODE_NODES).orAccumulate(accumulator);
@@ -361,7 +370,6 @@ public final class Vp8Decoder {
             throw new WebPException("Invalid VP8 chroma prediction mode: " + chromaModeCode);
         }
 
-        System.arraycopy(macroBlock.bpred, 12, top[macroblockX].bpred, 0, 4);
         return headerDecoder.check(accumulator, macroBlock);
     }
 
@@ -389,7 +397,11 @@ public final class Vp8Decoder {
             case H -> LossyPrediction.predictHpred(workspace, 16, 1, 1, stride);
             case TM -> LossyPrediction.predictTmpred(workspace, 16, 1, 1, stride);
             case DC -> LossyPrediction.predictDcpred(workspace, 16, stride, macroblockY != 0, macroblockX != 0);
-            case B -> LossyPrediction.predict4x4(workspace, stride, macroBlock.bpred, residualData);
+            case B -> {
+                IntraMode[] bpred = macroBlock.bpred;
+                assert bpred != null;
+                LossyPrediction.predict4x4(workspace, stride, bpred, residualData);
+            }
         }
 
         if (macroBlock.lumaMode != LumaMode.B) {
@@ -634,7 +646,7 @@ public final class Vp8Decoder {
         return blocks;
     }
 
-    private void loopFilter(int macroblockX, int macroblockY, MacroBlock macroBlock) {
+    private void loopFilter(int macroblockX, int macroblockY, int macroBlockInfo) {
         int lumaWidth = macroblockWidth * 16;
         int chromaWidth = macroblockWidth * 8;
         byte[] yBuffer = frame.yBuffer;
@@ -642,7 +654,7 @@ public final class Vp8Decoder {
         byte[] vBuffer = frame.vBuffer;
         int lumaBase = macroblockY * 16 * lumaWidth + macroblockX * 16;
         int chromaBase = macroblockY * 8 * chromaWidth + macroblockX * 8;
-        FilterParameters parameters = calculateFilterParameters(macroBlock);
+        FilterParameters parameters = calculateFilterParameters(macroBlockInfo);
 
         if (parameters.filterLevel == 0) {
             return;
@@ -650,8 +662,9 @@ public final class Vp8Decoder {
 
         int macroblockEdgeLimit = (parameters.filterLevel + 2) * 2 + parameters.interiorLimit;
         int subblockEdgeLimit = parameters.filterLevel * 2 + parameters.interiorLimit;
-        boolean doSubblockFiltering = macroBlock.lumaMode == LumaMode.B
-                || (!macroBlock.coefficientsSkipped && macroBlock.nonZeroDct);
+        int lumaModeCode = loopFilterLumaModeCode(macroBlockInfo);
+        boolean doSubblockFiltering = lumaModeCode == LossyCommon.B_PRED
+                || (!loopFilterCoefficientsSkipped(macroBlockInfo) && loopFilterNonZeroDct(macroBlockInfo));
 
         if (macroblockX > 0) {
             if (frame.filterType) {
@@ -821,8 +834,8 @@ public final class Vp8Decoder {
         }
     }
 
-    private FilterParameters calculateFilterParameters(MacroBlock macroBlock) {
-        Segment segment = segments[macroBlock.segmentId];
+    private FilterParameters calculateFilterParameters(int macroBlockInfo) {
+        Segment segment = segments[loopFilterSegmentId(macroBlockInfo)];
         int filterLevel = frame.filterLevel;
         if (filterLevel == 0) {
             return new FilterParameters(0, 0, 0);
@@ -835,7 +848,7 @@ public final class Vp8Decoder {
 
         if (loopFilterAdjustmentsEnabled) {
             filterLevel += refDelta[0];
-            if (macroBlock.lumaMode == LumaMode.B) {
+            if (loopFilterLumaModeCode(macroBlockInfo) == LossyCommon.B_PRED) {
                 filterLevel += modeDelta[0];
             }
         }
@@ -856,8 +869,37 @@ public final class Vp8Decoder {
         return new FilterParameters(filterLevel, interiorLimit, hevThreshold);
     }
 
+    private static byte packLoopFilterInfo(MacroBlock macroBlock) {
+        int info = macroBlock.segmentId & FILTER_INFO_SEGMENT_MASK;
+        info |= (macroBlock.lumaMode.code & FILTER_INFO_LUMA_MODE_MASK) << FILTER_INFO_LUMA_MODE_SHIFT;
+        if (macroBlock.coefficientsSkipped) {
+            info |= FILTER_INFO_COEFFICIENTS_SKIPPED;
+        }
+        if (macroBlock.nonZeroDct) {
+            info |= FILTER_INFO_NON_ZERO_DCT;
+        }
+        return (byte) info;
+    }
+
+    private static int loopFilterSegmentId(int macroBlockInfo) {
+        return macroBlockInfo & FILTER_INFO_SEGMENT_MASK;
+    }
+
+    private static int loopFilterLumaModeCode(int macroBlockInfo) {
+        return (macroBlockInfo >>> FILTER_INFO_LUMA_MODE_SHIFT) & FILTER_INFO_LUMA_MODE_MASK;
+    }
+
+    private static boolean loopFilterCoefficientsSkipped(int macroBlockInfo) {
+        return (macroBlockInfo & FILTER_INFO_COEFFICIENTS_SKIPPED) != 0;
+    }
+
+    private static boolean loopFilterNonZeroDct(int macroBlockInfo) {
+        return (macroBlockInfo & FILTER_INFO_NON_ZERO_DCT) != 0;
+    }
+
     private Vp8Frame decodeFrameInternal() throws WebPException {
         readFrameHeader();
+        int macroblockIndex = 0;
 
         for (int macroblockY = 0; macroblockY < macroblockHeight; macroblockY++) {
             int partition = macroblockY % numPartitions;
@@ -882,7 +924,7 @@ public final class Vp8Decoder {
 
                 intraPredictLuma(macroblockX, macroblockY, macroBlock, blocks);
                 intraPredictChroma(macroblockX, macroblockY, macroBlock, blocks);
-                macroblocks.add(macroBlock);
+                macroblockFilterInfo[macroblockIndex++] = packLoopFilterInfo(macroBlock);
             }
 
             Arrays.fill(leftBorderY, (byte) 129);
@@ -892,8 +934,7 @@ public final class Vp8Decoder {
 
         for (int macroblockY = 0; macroblockY < macroblockHeight; macroblockY++) {
             for (int macroblockX = 0; macroblockX < macroblockWidth; macroblockX++) {
-                MacroBlock macroBlock = macroblocks.get(macroblockY * macroblockWidth + macroblockX);
-                loopFilter(macroblockX, macroblockY, macroBlock);
+                loopFilter(macroblockX, macroblockY, macroblockFilterInfo[macroblockY * macroblockWidth + macroblockX] & 0xFF);
             }
         }
 
@@ -951,16 +992,12 @@ public final class Vp8Decoder {
 
     @NotNullByDefault
     private static final class MacroBlock {
-        final IntraMode[] bpred = new IntraMode[16];
+        @Nullable IntraMode[] bpred;
         LumaMode lumaMode = LumaMode.DC;
         ChromaMode chromaMode = ChromaMode.DC;
         int segmentId;
         boolean coefficientsSkipped;
         boolean nonZeroDct;
-
-        private MacroBlock() {
-            Arrays.fill(bpred, IntraMode.DC);
-        }
     }
 
     @NotNullByDefault
